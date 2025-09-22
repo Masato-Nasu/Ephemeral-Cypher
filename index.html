@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
-<title>EphemeralCypher — PWA (HTML / JPEG キー対応)</title>
+<title>EphemeralCypher — PWA (HTMLだけ／JPEGだけ／両方で鍵)</title>
 
 <!-- PWA -->
 <link rel="manifest" href="./manifest.json">
@@ -16,7 +16,7 @@
 <style>
   :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif; }
   body { margin:0; padding:18px; background:#fff; color:#111; }
-  .card { max-width:860px; margin:0 auto; padding:18px; border:1px solid #e6e6e6; border-radius:14px; box-shadow:0 6px 22px rgba(0,0,0,.04); }
+  .card { max-width:920px; margin:0 auto; padding:18px; border:1px solid #e6e6e6; border-radius:14px; box-shadow:0 6px 22px rgba(0,0,0,.04); }
   h1 { margin:0 0 6px; font-size:1.15rem; }
   p.small { margin:6px 0 12px; color:#555; font-size:.95rem; }
   label { display:block; margin-top:12px; font-weight:600; }
@@ -25,7 +25,7 @@
   }
   input[type=file]{ margin-top:8px; }
   textarea { min-height:120px; resize:vertical; }
-  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row { display:flex; gap:14px; flex-wrap:wrap; }
   .row > * { flex:1; min-width: 280px; }
   .controls { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
   button { padding:10px 12px; border-radius:10px; border:1px solid #111; background:#fff; cursor:pointer; }
@@ -35,24 +35,33 @@
   .tiny { font-size:.82rem; color:#555; }
   hr{ margin:16px 0; border:none; border-top:1px solid #eee; }
   .install { position: fixed; right: 12px; bottom: 12px; z-index: 10; }
+  fieldset { border:1px solid #d5d5d5; padding:10px; border-radius:10px; }
+  legend { padding:0 6px; }
 </style>
 </head>
 <body>
 <div class="card">
   <h1>EphemeralCypher</h1>
-  <p class="small">HTML と JPEG を鍵素材にできる暗号アプリ（PWA）。HTMLだけ／JPEGだけ／両方の組み合わせを選べます。</p>
+  <p class="small">HTML と JPEG を鍵素材にできる暗号アプリ（PWA）。<b>HTMLだけ</b>／<b>JPEGだけ</b>／<b>両方</b>の組み合わせを選べます。</p>
 
   <div class="row">
     <div>
-      <label>鍵ソース（URL またはローカル HTML）</label>
-      <input id="urlInput" type="url" placeholder="https://example.com/page.html（空欄ならファイル/画像入力を優先）">
-      <input id="fileInput" type="file" accept=".html,.htm,.txt">
-      <div class="tiny muted">※ URLが空欄でも動作します（画像のみの鍵にも対応）。</div>
+      <fieldset>
+        <legend><b>HTML 鍵ソース</b></legend>
+        <label>URL を指定する場合</label>
+        <input id="urlInput" type="url" placeholder="https://example.com/page.html">
+        <label>または ローカルHTMLファイルを選択</label>
+        <input id="fileInput" type="file" accept=".html,.htm,.txt">
+        <div class="tiny muted">※ HTMLを使わない場合は空欄のままでOK（画像だけ鍵も可能）。</div>
+      </fieldset>
     </div>
     <div>
-      <label>画像（JPEG/PNG/WebP/GIF）※任意</label>
-      <input id="imgInput" type="file" accept="image/*">
-      <div class="tiny muted">※ JPEGだけの鍵にしたい場合は、ここに画像を選ぶだけでOK。</div>
+      <fieldset>
+        <legend><b>画像 鍵ソース（任意）</b></legend>
+        <label>JPEG / PNG / WebP / GIF</label>
+        <input id="imgInput" type="file" accept="image/*">
+        <div class="tiny muted">※ JPEGだけを鍵にしたい場合は、ここに画像を選ぶだけでOK。</div>
+      </fieldset>
     </div>
   </div>
 
@@ -104,6 +113,7 @@
 </div>
 
 <script>
+// ====== 共有ユーティリティ ======
 const enc = new TextEncoder(), dec = new TextDecoder();
 const statusEl = document.getElementById('status');
 const urlInput = document.getElementById('urlInput');
@@ -146,6 +156,7 @@ function readFileText(file){
   });
 }
 
+// ====== HTMLハッシュ取得（画像のみ鍵も許容） ======
 async function getBaseHashHTML(allowEmpty=false){
   const file = fileInput.files[0];
   const url  = urlInput.value.trim();
@@ -160,6 +171,7 @@ async function getBaseHashHTML(allowEmpty=false){
   throw new Error('URL/HTMLファイルが未指定です。HTMLを使わない場合は画像のみモードにしてください。');
 }
 
+// ====== 画像ユーティリティ ======
 async function getLocalImageBlob(){
   const imgFile = imgInput.files && imgInput.files[0];
   if (!imgFile) return null;
@@ -261,6 +273,7 @@ async function computeImagePHashBytesFromBlob(blob){
   return phash;
 }
 
+// ====== 鍵導出 & AES-GCM ======
 async function deriveAesKey(baseHashHTML, passphrase, saltBytes, extraBytes){
   const passB = new TextEncoder().encode(passphrase || "");
   const total = new Uint8Array(baseHashHTML.length + passB.length + saltBytes.length + (extraBytes?extraBytes.length:0));
@@ -273,6 +286,23 @@ async function deriveAesKey(baseHashHTML, passphrase, saltBytes, extraBytes){
   return await crypto.subtle.importKey('raw', keyBytes, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
 }
 
+async function encryptAesGcm(plainBytes, key, iv) {
+  return new Uint8Array(await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    plainBytes
+  ));
+}
+
+async function decryptAesGcm(cipherBytes, key, iv) {
+  return new Uint8Array(await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: iv },
+    key,
+    cipherBytes
+  ));
+}
+
+// ====== 画像キー素材の生成 ======
 async function buildStrictImageBytes(url){
   const local = await getLocalImageBlob();
   if (local) {
@@ -301,6 +331,7 @@ async function buildPHashBytes(url){
   return await computeImagePHashBytesFromBlob(blob);
 }
 
+// ====== 暗号化 ======
 async function encryptFlow(){
   try{
     setStatus('鍵素材取得中...');
@@ -337,6 +368,7 @@ async function encryptFlow(){
   }
 }
 
+// ====== 復号 ======
 async function decryptFlow(){
   try{
     const input = (msgInput.value||"").trim();
@@ -385,6 +417,7 @@ async function decryptFlow(){
   }
 }
 
+// ====== UI バインド ======
 document.getElementById('encryptBtn').addEventListener('click', encryptFlow);
 document.getElementById('decryptBtn').addEventListener('click', decryptFlow);
 document.getElementById('pasteBtn').addEventListener('click', async ()=>{
@@ -414,19 +447,17 @@ setStatus('準備完了 — HTMLだけ／JPEGだけ／両方で鍵を作れま�
 <button id="installBtn" class="install" style="display:none">⬇️ インストール</button>
 <script>
 let deferredPrompt = null;
-
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js', { scope: './' })
+  // クエリを付けてキャッシュ更新を促進（必要に応じて数字を上げてください）
+  navigator.serviceWorker.register('./sw.js?v=3', { scope: './' })
     .then(() => console.log('SW registered'))
     .catch(console.error);
 }
-
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault();
   deferredPrompt = e;
   document.getElementById('installBtn').style.display = 'inline-block';
 });
-
 document.getElementById('installBtn').addEventListener('click', async () => {
   if (!deferredPrompt) return;
   deferredPrompt.prompt();
