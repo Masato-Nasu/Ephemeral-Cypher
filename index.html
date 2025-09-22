@@ -2,8 +2,17 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
 <title>EphemeralCypher — Hybrid Failover (AES-GCM / salt-iv / passphrase / pHash)</title>
+
+<!-- PWA -->
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#111111">
+<link rel="icon" href="./icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
 <style>
   :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif; }
   body { margin:0; padding:18px; background:#fff; color:#111; }
@@ -25,14 +34,13 @@
   .warn { color:#a00; font-weight:700; }
   .tiny { font-size:.82rem; color:#555; }
   hr{ margin:16px 0; border:none; border-top:1px solid #eee; }
+  .install { position: fixed; right: 12px; bottom: 12px; z-index: 10; }
 </style>
 </head>
 <body>
 <div class="card">
   <h1>EphemeralCypher</h1>
-  <p class="small">
-    HTMLを鍵源にした、暗号生成・復号器です。
-  </p>
+  <p class="small">HTMLを鍵源にした、暗号生成・復号器です。</p>
 
   <label>鍵ソース（URL またはローカル HTML ファイル）</label>
   <input id="urlInput" type="url" placeholder="https://example.com/page.html（空欄なら下のファイル入力を優先）">
@@ -85,8 +93,8 @@
   </ul>
 </div>
 
+<!-- ====== アプリ本体（あなたのロジック） ====== -->
 <script>
-/* ====== 基本ユーティリティ ====== */
 const enc = new TextEncoder(), dec = new TextDecoder();
 const statusEl = document.getElementById('status');
 const urlInput = document.getElementById('urlInput');
@@ -104,18 +112,14 @@ function toB64(bytes){ return btoa(String.fromCharCode(...bytes)); }
 function fromB64(str){ return new Uint8Array(atob(str).split('').map(c=>c.charCodeAt(0))); }
 async function sha256Bytes(bytes){ return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)); }
 
-/* ====== HTML正規化（クリブ軽減） ====== */
 function normalizeHtmlText(text){
   if (!text) return "";
-  // BOM除去
   if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
-  // DOCTYPE/先頭宣言の削除（簡易）
   text = text.replace(/^\s*<!doctype[^>]*>/i, '');
   text = text.replace(/^\s*<\?xml[^>]*\?>/i, '');
   return text.trim();
 }
 
-/* ====== ページHTML取得（allorigins経由） ====== */
 async function fetchTextViaProxy(url){
   const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
   const res = await fetch(proxy, { cache:'no-store' });
@@ -145,13 +149,11 @@ function readFileText(file){
   });
 }
 
-/* ====== ページ内の最初の<img>を取得 ====== */
 async function getFirstImageURLFromHtml(rawHtml, baseUrl){
   try{
     const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
     const img = doc.querySelector('img');
     if (!img || !img.src) return null;
-    // 相対URL対策
     const a = document.createElement('a');
     a.href = img.src;
     if (!a.host && baseUrl){
@@ -162,7 +164,6 @@ async function getFirstImageURLFromHtml(rawHtml, baseUrl){
   }catch(e){ return null; }
 }
 
-/* ====== 画像の生バイト or pHash ====== */
 async function fetchImageBlobViaProxy(imgUrl){
   const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(imgUrl), { cache:'no-store' });
   if (!res.ok) throw new Error('画像取得失敗: ' + res.status);
@@ -170,7 +171,6 @@ async function fetchImageBlobViaProxy(imgUrl){
 }
 
 async function imageBitmapFromBlob(blob){
-  // createImageBitmap が無い/不可なら <img> + canvas でフォールバック
   if ('createImageBitmap' in window){
     try { return await createImageBitmap(blob); } catch(e){}
   }
@@ -190,13 +190,10 @@ function getCanvasCtx(w,h){
   return { canvas: c, ctx };
 }
 
-/* pHash: 32x32 → DCT → 上位8x8 */
 function dct2dFloat(Y, N){
-  // 簡易DCT-II（O(N^2)）: N=32固定前提なので十分高速
   const C = new Float32Array(N*N);
   const pi = Math.PI, invN = 1/Math.sqrt(N);
   const alpha = (k)=> k===0 ? invN : Math.sqrt(2/N);
-  // 行方向DCT
   const tmp = new Float32Array(N*N);
   for (let y=0;y<N;y++){
     for (let u=0;u<N;u++){
@@ -207,7 +204,6 @@ function dct2dFloat(Y, N){
       tmp[y*N+u] = alpha(u)*sum;
     }
   }
-  // 列方向DCT
   for (let u=0;u<N;u++){
     for (let v=0;v<N;v++){
       let sum=0;
@@ -226,14 +222,12 @@ async function computeImagePHashBytesFromBlob(blob){
   const {canvas,ctx} = getCanvasCtx(size, size);
   ctx.drawImage(bmp, 0, 0, size, size);
   const imgData = ctx.getImageData(0,0,size,size).data;
-  // 輝度Y
   const Y = new Float32Array(size*size);
   for (let i=0, j=0; i<imgData.length; i+=4, j++){
     const r=imgData[i], g=imgData[i+1], b=imgData[i+2];
     Y[j] = 0.299*r + 0.587*g + 0.114*b;
   }
   const D = dct2dFloat(Y, size);
-  // 上位8×8ブロック
   const block = [];
   for (let v=0; v<8; v++){
     for (let u=0; u<8; u++){
@@ -250,20 +244,18 @@ async function computeImagePHashBytesFromBlob(blob){
   return phash;
 }
 
-/* ====== 鍵導出（共通）: key = SHA256( baseHashHTML || passphrase || salt || extraBytes ) ====== */
 async function deriveAesKey(baseHashHTML, passphrase, saltBytes, extraBytes){
-  const passB = enc.encode(passphrase || "");
+  const passB = new TextEncoder().encode(passphrase || "");
   const total = new Uint8Array(baseHashHTML.length + passB.length + saltBytes.length + (extraBytes?extraBytes.length:0));
   let off=0;
   total.set(baseHashHTML, off); off += baseHashHTML.length;
   total.set(passB, off);        off += passB.length;
   total.set(saltBytes, off);    off += saltBytes.length;
   if (extraBytes){ total.set(extraBytes, off); }
-  const keyBytes = await sha256Bytes(total);
+  const keyBytes = await crypto.subtle.digest('SHA-256', total).then(buf=>new Uint8Array(buf));
   return await crypto.subtle.importKey('raw', keyBytes, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
 }
 
-/* ====== AES-GCM ====== */
 async function encryptAesGcm(plainBytes, key, iv){
   return new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, plainBytes));
 }
@@ -271,7 +263,6 @@ async function decryptAesGcm(ctBytes, key, iv){
   return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ctBytes));
 }
 
-/* ====== 高レベル：鍵材料の作成 ====== */
 async function buildStrictImageBytes(url){
   const raw = await fetchTextViaProxy(url);
   const imgUrl = await getFirstImageURLFromHtml(raw, url);
@@ -289,7 +280,6 @@ async function buildPHashBytes(url){
   return await computeImagePHashBytesFromBlob(blob);
 }
 
-/* ====== 暗号化フロー ====== */
 async function encryptFlow(){
   try{
     setStatus('鍵素材取得中...');
@@ -297,7 +287,7 @@ async function encryptFlow(){
     const pass = passInput.value || "";
     if (!pass) setStatus('警告: passphrase が空欄です（公開HTML依存は危険）', true);
 
-    const mode = encryptModeSel.value; // strict-html / strict-img / phash
+    const mode = encryptModeSel.value;
     let extra = null;
 
     if (mode === 'strict-img'){
@@ -316,14 +306,14 @@ async function encryptFlow(){
     const iv   = crypto.getRandomValues(new Uint8Array(12));
     const key  = await deriveAesKey(baseHash, pass, salt, extra);
 
-    const pt = enc.encode(msgInput.value||"");
+    const pt = new TextEncoder().encode(msgInput.value||"");
     if (!pt.length) throw new Error('暗号化するテキストを入力してください');
 
     setStatus('暗号化中...');
     const ct = await encryptAesGcm(pt, key, iv);
     const out = new Uint8Array(salt.length + iv.length + ct.length);
     out.set(salt,0); out.set(iv,12); out.set(ct,24);
-    outText.value = toB64(out);
+    outText.value = btoa(String.fromCharCode(...out));
     setStatus('✅ 暗号化完了');
   }catch(e){
     outText.value = '';
@@ -331,12 +321,11 @@ async function encryptFlow(){
   }
 }
 
-/* ====== 復号フロー（自動フェイルオーバー） ====== */
 async function decryptFlow(){
   try{
     const input = (msgInput.value||"").trim();
     if (!input) throw new Error('復号する base64 を入力してください');
-    const data = fromB64(input.replace(/\s+/g,''));
+    const data = new Uint8Array(atob(input.replace(/\s+/g,'')).split('').map(c=>c.charCodeAt(0)));
     if (data.length < 24) throw new Error('入力が短すぎます');
     const salt = data.slice(0,12);
     const iv   = data.slice(12,24);
@@ -346,7 +335,6 @@ async function decryptFlow(){
     const baseHash = await getBaseHashHTML();
     const pass = passInput.value || "";
 
-    // 候補鍵（順序はチェック順）
     const url = urlInput.value.trim();
     const tryList = [];
 
@@ -368,12 +356,11 @@ async function decryptFlow(){
         const extra = await cand.buildExtra();
         const key   = await deriveAesKey(baseHash, pass, salt, extra||null);
         const pt    = await decryptAesGcm(ct, key, iv);
-        outText.value = dec.decode(pt);
+        outText.value = new TextDecoder().decode(pt);
         setStatus('✅ 復号成功: ' + cand.name);
         return;
       }catch(err){
         lastErr = err;
-        // 続行（次の候補へ）
       }
     }
     throw lastErr || new Error('全ての候補で復号に失敗しました');
@@ -383,7 +370,6 @@ async function decryptFlow(){
   }
 }
 
-/* ====== UI バインド ====== */
 document.getElementById('encryptBtn').addEventListener('click', encryptFlow);
 document.getElementById('decryptBtn').addEventListener('click', decryptFlow);
 document.getElementById('pasteBtn').addEventListener('click', async ()=>{
@@ -406,8 +392,34 @@ document.getElementById('clearBtn').addEventListener('click', ()=>{
   msgInput.value=''; outText.value=''; setStatus('入力をクリアしました');
 });
 
-/* 初期ステータス */
 setStatus('準備完了 — URLかファイルを指定し、必要ならpassphraseを入れて暗号化/復号してください。');
+</script>
+
+<!-- Service Worker 登録（スコープ明示 & 1回再読込で制御下へ） -->
+<button id="installBtn" class="install">⬇️ インストール</button>
+<script>
+let deferredPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js', { scope: './' })
+    .then(() => console.log('SW registered'))
+    .catch(console.error);
+}
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  document.getElementById('installBtn').style.display = 'inline-block';
+});
+
+document.getElementById('installBtn').addEventListener('click', async () => {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const { outcome } = await deferredPrompt.userChoice;
+  console.log('PWA install:', outcome);
+  deferredPrompt = null;
+  document.getElementById('installBtn').style.display = 'none';
+});
 </script>
 </body>
 </html>
