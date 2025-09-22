@@ -1,0 +1,413 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>EphemeralCypher — Hybrid Failover (AES-GCM / salt-iv / passphrase / pHash)</title>
+<style>
+  :root { font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans JP", sans-serif; }
+  body { margin:0; padding:18px; background:#fff; color:#111; }
+  .card { max-width:860px; margin:0 auto; padding:18px; border:1px solid #e6e6e6; border-radius:14px; box-shadow:0 6px 22px rgba(0,0,0,.04); }
+  h1 { margin:0 0 6px; font-size:1.15rem; }
+  p.small { margin:6px 0 12px; color:#555; font-size:.95rem; }
+  label { display:block; margin-top:12px; font-weight:600; }
+  input[type=url], input[type=password], textarea, select {
+    width:100%; box-sizing:border-box; padding:10px; border:1px solid #cfcfcf; border-radius:10px; margin-top:6px; font-size:1rem;
+  }
+  input[type=file]{ margin-top:8px; }
+  textarea { min-height:120px; resize:vertical; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; }
+  .row > * { flex:1; }
+  .controls { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+  button { padding:10px 12px; border-radius:10px; border:1px solid #111; background:#fff; cursor:pointer; }
+  .muted { color:#666; font-size:.92rem; }
+  .status { margin-top:10px; font-size:.95rem; color:#111; }
+  .warn { color:#a00; font-weight:700; }
+  .tiny { font-size:.82rem; color:#555; }
+  hr{ margin:16px 0; border:none; border-top:1px solid #eee; }
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>EphemeralCypher</h1>
+  <p class="small">
+    HTMLを鍵源にした、暗号生成・復号器です。
+  </p>
+
+  <label>鍵ソース（URL またはローカル HTML ファイル）</label>
+  <input id="urlInput" type="url" placeholder="https://example.com/page.html（空欄なら下のファイル入力を優先）">
+  <input id="fileInput" type="file" accept=".html,.htm,.txt">
+
+  <label>共有パスフレーズ（推奨・相手と共有）</label>
+  <input id="passphrase" type="password" placeholder="例: word42 — 空欄は動作可だが公開HTML依存で危険">
+
+  <div class="row">
+    <div>
+      <label>暗号化時の鍵拡張（選択式）</label>
+      <select id="encryptMode">
+        <option value="strict-html">厳格：HTMLのみ</option>
+        <option value="strict-img">厳格：HTML + 最初の &lt;img&gt; の生バイト</option>
+        <option value="phash">寛容：HTML + 最初の &lt;img&gt; の pHash(64bit)</option>
+      </select>
+      <div class="tiny muted">※「厳格：生バイト」はJPEGの再エンコードで一致しなくなる可能性。寛容pHashは近似一致に耐性あるが安全性は相対的に低下。</div>
+    </div>
+    <div>
+      <label>復号時の自動試行順</label>
+      <input id="tryStrictHtml" type="checkbox" checked> 厳格(HTMLのみ)
+      <br><input id="tryStrictImg" type="checkbox" checked> 厳格(HTML+画像生バイト)
+      <br><input id="tryPHash" type="checkbox" checked> 寛容(HTML+pHash)
+      <div class="tiny muted">チェックされた順に自動試行します（初期は ①HTMLのみ → ②HTML+生バイト → ③HTML+pHash）。</div>
+    </div>
+  </div>
+
+  <label>メッセージ（平文 または 暗号文 base64）</label>
+  <textarea id="messageInput" placeholder="平文を入れて暗号化／暗号文を入れて復号"></textarea>
+
+  <div class="controls">
+    <button id="encryptBtn">🔐 暗号化</button>
+    <button id="decryptBtn">🔓 復号（自動フェイルオーバー）</button>
+    <button id="pasteBtn">📥 貼り付け→自動判定</button>
+    <button id="copyBtn">📋 出力コピー</button>
+    <button id="clearBtn">🧹 クリア</button>
+  </div>
+
+  <label>出力</label>
+  <textarea id="outputText" readonly placeholder="結果がここに表示されます"></textarea>
+
+  <div id="status" class="status muted">準備完了</div>
+
+  <hr>
+  <p class="warn">注意</p>
+  <ul class="muted">
+    <li>公開ページのみを鍵にするのは危険です。<b>passphrase</b>の併用を強く推奨。</li>
+    <li>厳格（生バイト）は最も強固ですが、JPEGの再エンコードやCDN最適化で一致しないことがあります。</li>
+    <li>寛容（pHash）は近似一致に強い代わりに、総当たり耐性が相対的に下がります（必ず salt/IV/passphrase と併用）。</li>
+  </ul>
+</div>
+
+<script>
+/* ====== 基本ユーティリティ ====== */
+const enc = new TextEncoder(), dec = new TextDecoder();
+const statusEl = document.getElementById('status');
+const urlInput = document.getElementById('urlInput');
+const fileInput = document.getElementById('fileInput');
+const passInput = document.getElementById('passphrase');
+const encryptModeSel = document.getElementById('encryptMode');
+const tryStrictHtmlCb = document.getElementById('tryStrictHtml');
+const tryStrictImgCb  = document.getElementById('tryStrictImg');
+const tryPHashCb      = document.getElementById('tryPHash');
+const msgInput = document.getElementById('messageInput');
+const outText  = document.getElementById('outputText');
+
+function setStatus(txt, warn=false){ statusEl.textContent = txt; statusEl.style.color = warn ? '#a00' : '#111'; }
+function toB64(bytes){ return btoa(String.fromCharCode(...bytes)); }
+function fromB64(str){ return new Uint8Array(atob(str).split('').map(c=>c.charCodeAt(0))); }
+async function sha256Bytes(bytes){ return new Uint8Array(await crypto.subtle.digest('SHA-256', bytes)); }
+
+/* ====== HTML正規化（クリブ軽減） ====== */
+function normalizeHtmlText(text){
+  if (!text) return "";
+  // BOM除去
+  if (text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+  // DOCTYPE/先頭宣言の削除（簡易）
+  text = text.replace(/^\s*<!doctype[^>]*>/i, '');
+  text = text.replace(/^\s*<\?xml[^>]*\?>/i, '');
+  return text.trim();
+}
+
+/* ====== ページHTML取得（allorigins経由） ====== */
+async function fetchTextViaProxy(url){
+  const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+  const res = await fetch(proxy, { cache:'no-store' });
+  if (!res.ok) throw new Error('ページ取得失敗: ' + res.status);
+  return await res.text();
+}
+
+async function getBaseHashHTML(){
+  const file = fileInput.files[0];
+  const url  = urlInput.value.trim();
+  if (file){
+    const t = await readFileText(file);
+    return await sha256Bytes(enc.encode(normalizeHtmlText(t)));
+  } else if (url){
+    const raw = await fetchTextViaProxy(url);
+    return await sha256Bytes(enc.encode(normalizeHtmlText(raw)));
+  }
+  throw new Error('URL か ファイル を指定してください');
+}
+
+function readFileText(file){
+  return new Promise((resolve,reject)=>{
+    const r = new FileReader();
+    r.onload = e => resolve(String(e.target.result||""));
+    r.onerror = ()=> reject(new Error('ファイル読み込みエラー'));
+    r.readAsText(file);
+  });
+}
+
+/* ====== ページ内の最初の<img>を取得 ====== */
+async function getFirstImageURLFromHtml(rawHtml, baseUrl){
+  try{
+    const doc = new DOMParser().parseFromString(rawHtml, 'text/html');
+    const img = doc.querySelector('img');
+    if (!img || !img.src) return null;
+    // 相対URL対策
+    const a = document.createElement('a');
+    a.href = img.src;
+    if (!a.host && baseUrl){
+      const u = new URL(baseUrl);
+      return new URL(img.src, u).toString();
+    }
+    return img.src;
+  }catch(e){ return null; }
+}
+
+/* ====== 画像の生バイト or pHash ====== */
+async function fetchImageBlobViaProxy(imgUrl){
+  const res = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(imgUrl), { cache:'no-store' });
+  if (!res.ok) throw new Error('画像取得失敗: ' + res.status);
+  return await res.blob();
+}
+
+async function imageBitmapFromBlob(blob){
+  // createImageBitmap が無い/不可なら <img> + canvas でフォールバック
+  if ('createImageBitmap' in window){
+    try { return await createImageBitmap(blob); } catch(e){}
+  }
+  return await new Promise((resolve,reject)=>{
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    img.onload = ()=>{ resolve(img); URL.revokeObjectURL(url); };
+    img.onerror = ()=>{ reject(new Error('画像デコード失敗')); URL.revokeObjectURL(url); };
+    img.src = url;
+  });
+}
+
+function getCanvasCtx(w,h){
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently:true });
+  return { canvas: c, ctx };
+}
+
+/* pHash: 32x32 → DCT → 上位8x8 */
+function dct2dFloat(Y, N){
+  // 簡易DCT-II（O(N^2)）: N=32固定前提なので十分高速
+  const C = new Float32Array(N*N);
+  const pi = Math.PI, invN = 1/Math.sqrt(N);
+  const alpha = (k)=> k===0 ? invN : Math.sqrt(2/N);
+  // 行方向DCT
+  const tmp = new Float32Array(N*N);
+  for (let y=0;y<N;y++){
+    for (let u=0;u<N;u++){
+      let sum=0;
+      for (let x=0;x<N;x++){
+        sum += Y[y*N+x]*Math.cos(((2*x+1)*u*pi)/(2*N));
+      }
+      tmp[y*N+u] = alpha(u)*sum;
+    }
+  }
+  // 列方向DCT
+  for (let u=0;u<N;u++){
+    for (let v=0;v<N;v++){
+      let sum=0;
+      for (let y=0;y<N;y++){
+        sum += tmp[y*N+u]*Math.cos(((2*y+1)*v*pi)/(2*N));
+      }
+      C[v*N+u] = alpha(v)*sum;
+    }
+  }
+  return C;
+}
+
+async function computeImagePHashBytesFromBlob(blob){
+  const bmp = await imageBitmapFromBlob(blob);
+  const size = 32;
+  const {canvas,ctx} = getCanvasCtx(size, size);
+  ctx.drawImage(bmp, 0, 0, size, size);
+  const imgData = ctx.getImageData(0,0,size,size).data;
+  // 輝度Y
+  const Y = new Float32Array(size*size);
+  for (let i=0, j=0; i<imgData.length; i+=4, j++){
+    const r=imgData[i], g=imgData[i+1], b=imgData[i+2];
+    Y[j] = 0.299*r + 0.587*g + 0.114*b;
+  }
+  const D = dct2dFloat(Y, size);
+  // 上位8×8ブロック
+  const block = [];
+  for (let v=0; v<8; v++){
+    for (let u=0; u<8; u++){
+      block.push(D[v*size + u]);
+    }
+  }
+  const mean = block.slice(1).reduce((a,b)=>a+b,0)/(block.length-1);
+  let bits = 0n;
+  for (let k=0;k<64;k++){
+    bits = (bits<<1n) | (block[k] > mean ? 1n : 0n);
+  }
+  const phash = new Uint8Array(8);
+  for (let i=7;i>=0;i--){ phash[i] = Number(bits & 0xFFn); bits >>= 8n; }
+  return phash;
+}
+
+/* ====== 鍵導出（共通）: key = SHA256( baseHashHTML || passphrase || salt || extraBytes ) ====== */
+async function deriveAesKey(baseHashHTML, passphrase, saltBytes, extraBytes){
+  const passB = enc.encode(passphrase || "");
+  const total = new Uint8Array(baseHashHTML.length + passB.length + saltBytes.length + (extraBytes?extraBytes.length:0));
+  let off=0;
+  total.set(baseHashHTML, off); off += baseHashHTML.length;
+  total.set(passB, off);        off += passB.length;
+  total.set(saltBytes, off);    off += saltBytes.length;
+  if (extraBytes){ total.set(extraBytes, off); }
+  const keyBytes = await sha256Bytes(total);
+  return await crypto.subtle.importKey('raw', keyBytes, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
+}
+
+/* ====== AES-GCM ====== */
+async function encryptAesGcm(plainBytes, key, iv){
+  return new Uint8Array(await crypto.subtle.encrypt({name:'AES-GCM', iv}, key, plainBytes));
+}
+async function decryptAesGcm(ctBytes, key, iv){
+  return new Uint8Array(await crypto.subtle.decrypt({name:'AES-GCM', iv}, key, ctBytes));
+}
+
+/* ====== 高レベル：鍵材料の作成 ====== */
+async function buildStrictImageBytes(url){
+  const raw = await fetchTextViaProxy(url);
+  const imgUrl = await getFirstImageURLFromHtml(raw, url);
+  if (!imgUrl) return null;
+  const blob = await fetchImageBlobViaProxy(imgUrl);
+  const ab = await blob.arrayBuffer();
+  return new Uint8Array(ab);
+}
+
+async function buildPHashBytes(url){
+  const raw = await fetchTextViaProxy(url);
+  const imgUrl = await getFirstImageURLFromHtml(raw, url);
+  if (!imgUrl) return null;
+  const blob = await fetchImageBlobViaProxy(imgUrl);
+  return await computeImagePHashBytesFromBlob(blob);
+}
+
+/* ====== 暗号化フロー ====== */
+async function encryptFlow(){
+  try{
+    setStatus('鍵素材取得中...');
+    const baseHash = await getBaseHashHTML();
+    const pass = passInput.value || "";
+    if (!pass) setStatus('警告: passphrase が空欄です（公開HTML依存は危険）', true);
+
+    const mode = encryptModeSel.value; // strict-html / strict-img / phash
+    let extra = null;
+
+    if (mode === 'strict-img'){
+      const url = urlInput.value.trim();
+      if (!url) throw new Error('「厳格：HTML+画像生バイト」はURLページが必要です（ファイル内の<img>は非対応）');
+      extra = await buildStrictImageBytes(url);
+      if (!extra) throw new Error('ページ内の最初の<img>が見つからない/取得不可でした');
+    } else if (mode === 'phash'){
+      const url = urlInput.value.trim();
+      if (!url) throw new Error('「寛容：pHash」はURLページが必要です（ファイル内の<img>は非対応）');
+      extra = await buildPHashBytes(url);
+      if (!extra) throw new Error('ページ内の最初の<img>が見つからない/取得不可でした（pHash生成不可）');
+    }
+
+    const salt = crypto.getRandomValues(new Uint8Array(12));
+    const iv   = crypto.getRandomValues(new Uint8Array(12));
+    const key  = await deriveAesKey(baseHash, pass, salt, extra);
+
+    const pt = enc.encode(msgInput.value||"");
+    if (!pt.length) throw new Error('暗号化するテキストを入力してください');
+
+    setStatus('暗号化中...');
+    const ct = await encryptAesGcm(pt, key, iv);
+    const out = new Uint8Array(salt.length + iv.length + ct.length);
+    out.set(salt,0); out.set(iv,12); out.set(ct,24);
+    outText.value = toB64(out);
+    setStatus('✅ 暗号化完了');
+  }catch(e){
+    outText.value = '';
+    setStatus('🔴 暗号化失敗: ' + (e.message||e), true);
+  }
+}
+
+/* ====== 復号フロー（自動フェイルオーバー） ====== */
+async function decryptFlow(){
+  try{
+    const input = (msgInput.value||"").trim();
+    if (!input) throw new Error('復号する base64 を入力してください');
+    const data = fromB64(input.replace(/\s+/g,''));
+    if (data.length < 24) throw new Error('入力が短すぎます');
+    const salt = data.slice(0,12);
+    const iv   = data.slice(12,24);
+    const ct   = data.slice(24);
+
+    setStatus('鍵素材（HTMLハッシュ）取得中...');
+    const baseHash = await getBaseHashHTML();
+    const pass = passInput.value || "";
+
+    // 候補鍵（順序はチェック順）
+    const url = urlInput.value.trim();
+    const tryList = [];
+
+    if (tryStrictHtmlCb.checked){
+      tryList.push({ name:'厳格:HTMLのみ', buildExtra: async()=>null });
+    }
+    if (tryStrictImgCb.checked && url){
+      tryList.push({ name:'厳格:HTML+画像生バイト', buildExtra: async()=> await buildStrictImageBytes(url) });
+    }
+    if (tryPHashCb.checked && url){
+      tryList.push({ name:'寛容:HTML+pHash', buildExtra: async()=> await buildPHashBytes(url) });
+    }
+    if (tryList.length === 0) throw new Error('試行モードが全て無効です。右側のチェックを有効にしてください。');
+
+    let lastErr = null;
+    for (const cand of tryList){
+      try{
+        setStatus('鍵導出→復号試行中: ' + cand.name + ' ...');
+        const extra = await cand.buildExtra();
+        const key   = await deriveAesKey(baseHash, pass, salt, extra||null);
+        const pt    = await decryptAesGcm(ct, key, iv);
+        outText.value = dec.decode(pt);
+        setStatus('✅ 復号成功: ' + cand.name);
+        return;
+      }catch(err){
+        lastErr = err;
+        // 続行（次の候補へ）
+      }
+    }
+    throw lastErr || new Error('全ての候補で復号に失敗しました');
+  }catch(e){
+    outText.value = '';
+    setStatus('🔴 復号失敗: ' + (e.message||e), true);
+  }
+}
+
+/* ====== UI バインド ====== */
+document.getElementById('encryptBtn').addEventListener('click', encryptFlow);
+document.getElementById('decryptBtn').addEventListener('click', decryptFlow);
+document.getElementById('pasteBtn').addEventListener('click', async ()=>{
+  try{
+    const txt = await navigator.clipboard.readText();
+    if (!txt){ setStatus('📋 クリップボードに文字がありません', true); return; }
+    msgInput.value = txt;
+    const v = txt.trim();
+    if (/^[A-Za-z0-9+/=\s]+$/.test(v) && v.replace(/\s+/g,'').length>24){
+      setStatus('Base64検出→復号（自動試行）を実行'); await decryptFlow();
+    }else{
+      setStatus('テキスト検出→暗号化を実行'); await encryptFlow();
+    }
+  }catch(e){ setStatus('❌ クリップボード読み取り失敗: ' + (e.message||e), true); }
+});
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  outText.select(); document.execCommand('copy'); setStatus('📋 出力をコピーしました');
+});
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  msgInput.value=''; outText.value=''; setStatus('入力をクリアしました');
+});
+
+/* 初期ステータス */
+setStatus('準備完了 — URLかファイルを指定し、必要ならpassphraseを入れて暗号化/復号してください。');
+</script>
+</body>
+</html>
