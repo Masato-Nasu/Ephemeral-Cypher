@@ -1,77 +1,66 @@
-// sw.js
-const VERSION = 'v1.0.0';
-const APP_CACHE = `app-${VERSION}`;
-const RUNTIME_CACHE = `rt-${VERSION}`;
+// sw.js (v1.0.1) — simpler and Android-friendly
+const CACHE = 'ephemeralcypher-v1.0.1';
+const ASSETS = [
+  './',
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
+];
 
-// インストール：アプリシェルをキャッシュ
 self.addEventListener('install', (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(APP_CACHE);
-    await cache.addAll([
-      './',
-      './index.html',
-      './manifest.json',
-      './icon-192.png',
-      './icon-512.png'
-    ]);
-  })());
+  event.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
   self.skipWaiting();
 });
 
-// 有効化：古いキャッシュ削除
 self.addEventListener('activate', (event) => {
-  event.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.map(k => {
-      if (k !== APP_CACHE && k !== RUNTIME_CACHE) return caches.delete(k);
-    }));
-  })());
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE && caches.delete(k)))));
   self.clients.claim();
 });
 
-const APP_SHELL = new Set([
-  location.origin + location.pathname.replace(/\/[^\/]*$/, '/') ,
-  location.origin + location.pathname.replace(/\/[^\/]*$/, '/') + 'index.html',
-  location.origin + location.pathname.replace(/\/[^\/]*$/, '/') + 'manifest.json',
-  location.origin + location.pathname.replace(/\/[^\/]*$/, '/') + 'icon-192.png',
-  location.origin + location.pathname.replace(/\/[^\/]*$/, '/') + 'icon-512.png'
-]);
-
 self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  const url = new URL(req.url);
+  const { request } = event;
+  const url = new URL(request.url);
 
-  if (APP_SHELL.has(url.href)) {
+  // Navigation requests → offline fallback to index.html
+  if (request.mode === 'navigate') {
     event.respondWith((async () => {
-      const cache = await caches.open(APP_CACHE);
-      const cached = await cache.match(req);
-      const fetchPromise = fetch(req).then(res => {
-        if (res.ok) cache.put(req, res.clone());
-        return res;
-      }).catch(() => null);
-      return cached || fetchPromise || new Response('Offline', { status: 503 });
+      try {
+        const fresh = await fetch(request);
+        const cache = await caches.open(CACHE);
+        cache.put('./index.html', fresh.clone());
+        return fresh;
+      } catch (e) {
+        const cache = await caches.open(CACHE);
+        return (await cache.match('./index.html')) || Response.error();
+      }
     })());
     return;
   }
 
+  // App assets → stale-while-revalidate
+  if (ASSETS.includes(url.pathname.endsWith('/') ? './' : '.' + url.pathname.substring(url.pathname.lastIndexOf('/')))) {
+    event.respondWith((async () => {
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(request);
+      const network = fetch(request).then(res => {
+        if (res && res.ok) cache.put(request, res.clone());
+        return res;
+      }).catch(() => null);
+      return cached || network || Response.error();
+    })());
+    return;
+  }
+
+  // Other requests (e.g., allorigins) → network-first with fallback cache
   event.respondWith((async () => {
     try {
-      const res = await fetch(req);
-      const cache = await caches.open(RUNTIME_CACHE);
-      if (res && res.ok && (url.origin === location.origin || url.hostname.endsWith('allorigins.win'))) {
-        cache.put(req, res.clone());
-      }
+      const res = await fetch(request);
       return res;
     } catch (e) {
-      const cache = await caches.open(RUNTIME_CACHE);
-      const cached = await cache.match(req);
-      if (cached) return cached;
-      if (req.destination === 'document') {
-        const appCache = await caches.open(APP_CACHE);
-        const index = await appCache.match('./index.html');
-        if (index) return index;
-      }
-      return new Response('Offline', { status: 503 });
+      const cache = await caches.open(CACHE);
+      const cached = await cache.match(request);
+      return cached || Response.error();
     }
   })());
 });
