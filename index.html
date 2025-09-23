@@ -437,7 +437,14 @@ document.getElementById('copyBtn').addEventListener('click', ()=>{
   outText.select(); document.execCommand('copy'); setStatus('📋 出力をコピーしました');
 });
 document.getElementById('clearBtn').addEventListener('click', ()=>{
-  msgInput.value=''; outText.value=''; setStatus('入力をクリアしました');
+  // すべての入力をクリア（画像・HTML・URL・パスフレーズ・メッセージ）
+  msgInput.value='';
+  outText.value='';
+  urlInput.value='';
+  if (fileInput.value) fileInput.value='';
+  if (imgInput.value)  imgInput.value='';    // ← 画像もクリア
+  passInput.value='';
+  setStatus('入力をすべてクリアしました');
 });
 
 setStatus('準備完了 — HTMLだけ／JPEGだけ／両方で鍵を作れます（URLは任意）。');
@@ -448,8 +455,7 @@ setStatus('準備完了 — HTMLだけ／JPEGだけ／両方で鍵を作れま�
 <script>
 let deferredPrompt = null;
 if ('serviceWorker' in navigator) {
-  // クエリを付けてキャッシュ更新を促進（必要に応じて数字を上げてください）
-  navigator.serviceWorker.register('./sw.js?v=3', { scope: './' })
+  navigator.serviceWorker.register('./sw.js?v=4', { scope: './' })
     .then(() => console.log('SW registered'))
     .catch(console.error);
 }
