@@ -1,9 +1,28 @@
-EphemeralCypher
+# EphemeralCypher
+
+自然言語で鍵を共有できるインストール型暗号アプリ（PWA）
+
+![GitHub top language](https://img.shields.io/github/languages/top/Masato-Nasu/Ephemeral-Cypher)
+![GitHub last commit](https://img.shields.io/github/last-commit/Masato-Nasu/Ephemeral-Cypher)
+![GitHub](https://img.shields.io/github/license/Masato-Nasu/Ephemeral-Cypher)
+
+## 🚀 デモ
+👉 [EphemeralCypher を使ってみる](https://masato-nasu.github.io/Ephemeral-Cypher/)
+
+## 📸 スクリーンショット
+![EphemeralCypher Screenshot](./screenshot.png)
+
+## 🔑 特徴
+- **HTMLだけ／JPEGだけ／両方**で鍵を生成できる
+- **AES-GCM**（認証付き対抗モード）で暗号化／復号
+- **PWA対応**でインストールしてオフライン利用も可能
+- **ワンクリックで全クリア**（URL／HTMLファイル／画像／パスフレーズ／メッセージ）
+
+## 🌫 コンセプト
+鍵は残らず、暗号文も一時的に消えていく。  
+**「儚さこそが強度になる」** ─ EphemeralCypher が提示する新しい暗号体験。
 
 EphemeralCypher は、「鍵の共有」を自然なコミュニケーションで実現する、インストール可能な暗号アプリ（PWA）です。
-
-公開ページ:
-👉 https://masato-nasu.github.io/Ephemeral-Cypher/
 
 🔑 鍵素材の柔軟さ
 
