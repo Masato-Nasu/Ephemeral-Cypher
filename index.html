@@ -101,7 +101,7 @@
     </div>
     <div>
       <p class="title">EphemeralCypher</p>
-      <p class="sub">鍵素材（HTML または 画像）とメッセージだけ。余計な設定はありません。</p>
+      <p class="sub">鍵素材（HTML/画像）とメッセージだけ。余計な設定はありません。</p>
     </div>
   </div>
 
@@ -125,7 +125,7 @@
     <div>
       <label>鍵素材：画像ファイル（任意）</label>
       <input id="imgInput" type="file" accept="image/*">
-      <div class="mini">※ 画像鍵はコピー/再保存でも動きやすい方式です（大きな編集・トリミング・解像度変更が大きいと失敗することがあります）。</div>
+      <div class="mini">※ 画像鍵はコピー/再保存/リサイズ（解像度の大きな変更）でも動きやすい方式です（トリミングや大きな加工は失敗しやすいです）。</div>
     </div>
 
     <div style="grid-column: 1 / -1;">
@@ -202,40 +202,12 @@ async function sha256Bytes(bytes){
   return new Uint8Array(buf);
 }
 
-function stableHtmlText(html){
-  try{
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    // remove noisy nodes
-    doc.querySelectorAll('script,style,noscript,template').forEach(n=>n.remove());
-
-    const title = (doc.querySelector('title')?.textContent || '').trim();
-    const ogt   = (doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || '').trim();
-    const desc  = (doc.querySelector('meta[name="description"]')?.getAttribute('content') || '').trim();
-    const canon = (doc.querySelector('link[rel="canonical"]')?.getAttribute('href') || '').trim();
-
-    const body = doc.body ? (doc.body.innerText || doc.body.textContent || '') : '';
-    let t = [title, ogt, desc, canon, body].filter(Boolean).join('\n');
-
-    // normalize
-    t = t.replace(/\r\n?/g,'\n');
-    t = t.replace(/<!--[\s\S]*?-->/g, '');
-    t = t.replace(/^\s*<\?xml[^>]*\?>/i, '');
-    t = t.replace(/\s+/g,' ').trim();
-
-    // cap to keep it fast & stable
-    if (t.length > 200000) t = t.slice(0, 200000);
-    return t;
-  }catch(e){
-    // fallback: minimal normalization
-    let t = String(html || '').replace(/\r\n?/g,'\n');
-    t = t.replace(/<!--[\s\S]*?-->/g, '');
-    t = t.replace(/^\s*<\?xml[^>]*\?>/i, '');
-    t = t.replace(/\s+/g,' ').trim();
-    if (t.length > 200000) t = t.slice(0, 200000);
-    return t;
-  }
+function normalizeHtmlText(html){
+  let t = html.replace(/\r\n?/g,'\n');
+  t = t.replace(/<!--([\s\S]*?)-->/g, '');
+  t = t.replace(/^\s*<\?xml[^>]*\?>/i, '');
+  return t.trim();
 }
-
 
 async function readFileText(file){
   return new Promise((resolve,reject)=>{
@@ -247,21 +219,11 @@ async function readFileText(file){
 }
 
 async function fetchTextViaProxy(url){
-  const proxy = 'https://r.jina.ai/http' + (url.startsWith('https://') ? 's' : '') + '://' + url.replace(/^https?:\/\//,'');
-  const ac = new AbortController();
-  const timer = setTimeout(()=>ac.abort(), 9000);
-  try{
-    const res = await fetch(proxy, { cache:'no-store', signal: ac.signal });
-    if (!res.ok) throw new Error('ページ取得失敗: ' + res.status);
-    return await res.text();
-  }catch(e){
-    if (e && e.name === 'AbortError') throw new Error('ページ取得がタイムアウトしました');
-    throw e;
-  }finally{
-    clearTimeout(timer);
-  }
+  const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+  const res = await fetch(proxy, { cache:'no-store' });
+  if (!res.ok) throw new Error('ページ取得失敗: ' + res.status);
+  return await res.text();
 }
-
 
 async function fetchImageBlobViaProxy(url){
   const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
@@ -288,24 +250,24 @@ async function getHtmlHash(){
   const url = urlInput.value.trim();
   if (f){
     const t = await readFileText(f);
-    return await sha256Bytes(enc.encode(stableHtmlText(t)));
+    return await sha256Bytes(enc.encode(normalizeHtmlText(t)));
   }
   if (url){
     const raw = await fetchTextViaProxy(url);
-    return await sha256Bytes(enc.encode(stableHtmlText(raw)));
+    return await sha256Bytes(enc.encode(normalizeHtmlText(raw)));
   }
   return null;
 }
 
-async function imageKeyHashFromBlob(blob){
-  // 見た目ベースのハッシュ（再保存・コピーでバイト列が変わっても一致しやすい）
-  const a = await aHash64(blob); // 8 bytes
-  const d = await dHash64(blob); // 8 bytes
-  return await sha256Bytes(concatBytes(new Uint8Array([0x41,0x44]), a, d)); // 'A''D'
+async function createBitmapSafe(blob){
+  try{
+    return await createImageBitmap(blob, { imageOrientation: 'from-image' });
+  }catch(e){
+    return await createImageBitmap(blob);
+  }
 }
 
 function packBits64ToBytes(bits){
-  // bits: Array<boolean> length 64
   const out = new Uint8Array(8);
   for (let i=0;i<64;i++){
     if (bits[i]) out[i>>3] |= (1 << (7-(i&7)));
@@ -313,25 +275,125 @@ function packBits64ToBytes(bits){
   return out;
 }
 
-async function aHash64(blob){
-  const w=8,h=8;
-  const {data} = await drawImageToRGBA(blob, w, h);
-  const gray = new Float32Array(w*h);
-  let sum=0;
-  for (let i=0;i<w*h;i++){
-    const r=data[i*4], g=data[i*4+1], b=data[i*4+2];
-    const v = 0.299*r + 0.587*g + 0.114*b;
-    gray[i]=v; sum+=v;
+// ---- 画像のロバスト鍵（pHash + dHash） ----
+// 画像をデコード → 小さい解像度へ縮小 → 低周波特徴でハッシュ化。
+// これにより「コピー / 再保存 / 再圧縮 / 大きな解像度変更（リサイズ）」に強くします。
+// ※ トリミングや大きな加工（文字入れ・色補正・強いフィルタ等）には弱いです。
+const PHASH_N = 32;
+let _PH_COS = null;
+let _PH_ALPHA = null;
+function _phEnsureTables(){
+  if (_PH_COS) return;
+  const N = PHASH_N;
+  _PH_COS = new Float64Array(N*N);
+  const PI_N = Math.PI / N;
+  for (let k=0;k<N;k++){
+    for (let n=0;n<N;n++){
+      _PH_COS[k*N+n] = Math.cos(PI_N*(n+0.5)*k);
+    }
   }
-  const avg = sum/(w*h);
+  _PH_ALPHA = new Float64Array(N);
+  _PH_ALPHA[0] = Math.sqrt(1/N);
+  for (let k=1;k<N;k++) _PH_ALPHA[k] = Math.sqrt(2/N);
+}
+
+async function drawImageToRGBA(blob, w, h){
+  const bmp = await createBitmapSafe(blob);
+  try{
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently:true });
+    ctx.imageSmoothingEnabled = true;
+    try{ ctx.imageSmoothingQuality = 'high'; }catch(_){}
+    // リサイズ差分（特に極端な縮小）を少し吸収するための軽いブラー
+    try{ ctx.filter = 'blur(0.6px)'; }catch(_){}
+    ctx.drawImage(bmp, 0, 0, w, h);
+    try{ ctx.filter = 'none'; }catch(_){}
+    const img = ctx.getImageData(0,0,w,h);
+    return { data: img.data };
+  }finally{
+    try{ bmp.close(); }catch(e){}
+  }
+}
+
+function medianOf(arr){
+  const a = arr.slice().sort((x,y)=>x-y);
+  return a[(a.length>>1)];
+}
+
+function dct2d32(gray){
+  _phEnsureTables();
+  const N = PHASH_N;
+  const cos = _PH_COS;
+  const alpha = _PH_ALPHA;
+
+  const tmp = new Float64Array(N*N);
+  // rows
+  for (let y=0;y<N;y++){
+    const rowOff = y*N;
+    for (let k=0;k<N;k++){
+      let sum = 0;
+      const cosOff = k*N;
+      for (let n=0;n<N;n++){
+        sum += gray[rowOff + n] * cos[cosOff + n];
+      }
+      tmp[rowOff + k] = alpha[k] * sum;
+    }
+  }
+
+  const out = new Float64Array(N*N);
+  // cols
+  for (let x=0;x<N;x++){
+    for (let k=0;k<N;k++){
+      let sum = 0;
+      const cosOff = k*N;
+      for (let n=0;n<N;n++){
+        sum += tmp[n*N + x] * cos[cosOff + n];
+      }
+      out[k*N + x] = alpha[k] * sum;
+    }
+  }
+  return out;
+}
+
+async function pHash64(blob){
+  const N = PHASH_N;
+  const { data } = await drawImageToRGBA(blob, N, N);
+
+  const gray = new Float64Array(N*N);
+  for (let i=0;i<N*N;i++){
+    const r=data[i*4], g=data[i*4+1], b=data[i*4+2];
+    gray[i] = 0.299*r + 0.587*g + 0.114*b;
+  }
+
+  const dct = dct2d32(gray);
+
+  const coeffs = [];
+  for (let u=0;u<8;u++){
+    for (let v=0;v<8;v++){
+      if (u===0 && v===0) continue;
+      coeffs.push(dct[u*N + v]);
+    }
+  }
+  const med = medianOf(coeffs);
+
   const bits = new Array(64);
-  for (let i=0;i<64;i++) bits[i] = gray[i] >= avg;
+  let idx=0;
+  for (let u=0;u<8;u++){
+    for (let v=0;v<8;v++){
+      if (u===0 && v===0){
+        bits[idx++] = false;
+      }else{
+        bits[idx++] = dct[u*N + v] > med;
+      }
+    }
+  }
   return packBits64ToBytes(bits);
 }
 
 async function dHash64(blob){
   const w=9,h=8;
-  const {data} = await drawImageToRGBA(blob, w, h);
+  const { data } = await drawImageToRGBA(blob, w, h);
   const bits = new Array(64);
   let k=0;
   for (let y=0;y<h;y++){
@@ -345,34 +407,107 @@ async function dHash64(blob){
   return packBits64ToBytes(bits);
 }
 
-async function drawImageToRGBA(blob, w, h){
-  const bmp = await createImageBitmap(blob);
+function bytesToHex(u8){
+  let s = '';
+  for (let i=0;i<u8.length;i++){
+    s += u8[i].toString(16).padStart(2,'0');
+  }
+  return s;
+}
+
+async function legacyDHashHex(blob){
+  // 旧方式互換（以前のdHash実装のビット順・比較条件を再現）
+  const bmp = await createBitmapSafe(blob);
   try{
-    const c = document.createElement('canvas');
-    c.width = w; c.height = h;
-    const ctx = c.getContext('2d', { willReadFrequently:true });
-    ctx.clearRect(0,0,w,h);
+    const w = 9, h = 8;
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    ctx.imageSmoothingEnabled = true;
+    try{ ctx.imageSmoothingQuality = 'high'; }catch(_){}
     ctx.drawImage(bmp, 0, 0, w, h);
-    const img = ctx.getImageData(0,0,w,h);
-    return { data: img.data };
+    const { data } = ctx.getImageData(0, 0, w, h);
+
+    const lum = (x,y) => {
+      const i = (y*w + x)*4;
+      const r = data[i], g = data[i+1], b = data[i+2];
+      return (r*0.299 + g*0.587 + b*0.114);
+    };
+
+    let bits = 0n;
+    for (let y=0; y<h; y++){
+      for (let x=0; x<w-1; x++){
+        bits <<= 1n;
+        if (lum(x,y) < lum(x+1,y)) bits |= 1n;
+      }
+    }
+    return bits.toString(16).padStart(16, '0');
   }finally{
     try{ bmp.close(); }catch(e){}
   }
 }
 
-async function getImageHash(){
+async function imageHash_PD(blob){
+  // 新方式（推奨）
+  const p = await pHash64(blob); // 8 bytes
+  const d = await dHash64(blob); // 8 bytes
+  return await sha256Bytes(concatBytes(new Uint8Array([0x50,0x44]), p, d)); // 'P''D'
+}
+
+async function imageHash_DH_legacy(blob){
+  // 旧方式互換（dHash文字列 → SHA-256）
+  const dh = await legacyDHashHex(blob);
+  return await sha256Bytes(enc.encode('IMG_DHASH:' + dh));
+}
+
+async function imageHash_RAW(blob){
+  // さらに古い方式互換（バイト列そのまま）
+  const ab = await blob.arrayBuffer();
+  return await sha256Bytes(new Uint8Array(ab));
+}
+
+let _imgCache = { key: null, blob: null };
+
+async function getImageBlobCached(){
   const f = imgInput.files[0];
+  const url = urlInput.value.trim();
+
+  const key = f ? `F:${f.name}:${f.size}:${f.lastModified}` : (url ? `U:${url}` : '');
+  if (!key) return null;
+
+  if (_imgCache.key === key && _imgCache.blob) return _imgCache.blob;
+
+  let blob = null;
   if (f){
-    return await imageKeyHashFromBlob(f);
+    blob = f;
+  } else if (url){
+    const raw = await fetchTextViaProxy(url);
+    const imgUrl = await getFirstImageURLFromHtml(raw, url);
+    if (!imgUrl) return null;
+    blob = await fetchImageBlobViaProxy(imgUrl);
   }
-  return null;
+
+  _imgCache = { key, blob };
+  return blob;
+}
+
+async function getImageHash(variant='PD'){
+  const blob = await getImageBlobCached();
+  if (!blob) return null;
+
+  if (variant === 'PD') return await imageHash_PD(blob);
+  if (variant === 'DH') return await imageHash_DH_legacy(blob);
+  if (variant === 'RAW') return await imageHash_RAW(blob);
+  return await imageHash_PD(blob);
 }
 
 
 
-async function buildBaseKey(){
+
+
+async function buildBaseKey(imgVariant='PD'){
   const htmlHash = await getHtmlHash();
-  const imgHash  = await getImageHash();
+  const imgHash  = await getImageHash(imgVariant);
 
   const parts = [];
   if (htmlHash) parts.push(concatBytes(new Uint8Array([0x48]), htmlHash)); // 'H'
@@ -419,42 +554,23 @@ function randomBytes(n){
 
 // ===== UI =====
 function updateChips(){
-  // URL と HTMLファイルは「どちらか一方」に固定（混ざると復号失敗の原因になる）
-  const hasHtmlFile = !!fileInput.files[0];
-
-  if (hasHtmlFile){
-    urlInput.value = '';
-    urlInput.disabled = true;
-  }else{
-    urlInput.disabled = false;
-  }
-
-  // URL入力がある場合は HTMLファイル選択を解除
-  const url = urlInput.value.trim();
-  if (url && fileInput.files.length){
-    fileInput.value = '';
-  }
-
   const hasHtml = !!fileInput.files[0] || !!urlInput.value.trim();
-  const hasImg  = !!imgInput.files[0];
-
+  const hasImg  = !!imgInput.files[0]  || !!urlInput.value.trim();
   chipHtml.textContent = hasHtml ? 'HTML: 選択あり' : 'HTML: 未選択';
   chipImg.textContent  = hasImg  ? '画像: 選択あり' : '画像: 未選択';
   chipHtml.className = 'chip' + (hasHtml ? ' on' : '');
   chipImg.className  = 'chip' + (hasImg  ? ' on' : '');
 
-  const urlUsed = !!urlInput.value.trim() && !fileInput.files[0];
+  const url = urlInput.value.trim();
   const hasLocal = !!fileInput.files[0] || !!imgInput.files[0];
-  urlWarn.style.display = (urlUsed && !hasLocal) ? 'block' : 'none';
+  urlWarn.style.display = (url && !hasLocal) ? 'block' : 'none';
 
-  const hasKey = hasHtml || hasImg;
-  const hasText = !!msgInput.value.trim();
-
-  // 入力欄は「平文/暗号文」共用
-  encryptBtn.disabled = !(hasKey && hasText);
-  decryptBtn.disabled = !(hasKey && hasText);
+  // ボタン活性
+  const hasKeyMaybe = !!url || !!fileInput.files[0] || !!imgInput.files[0];
+  const hasMsg = !!msgInput.value.trim();
+  encryptBtn.disabled = !(hasKeyMaybe && hasMsg);
+  decryptBtn.disabled = !(hasKeyMaybe && hasMsg);
 }
-
 
 [urlInput, fileInput, imgInput, msgInput].forEach(el=>{
   el.addEventListener('input', updateChips);
@@ -490,15 +606,28 @@ decryptBtn.addEventListener('click', async ()=>{
     const salt = packed.subarray(0,16);
     const iv   = packed.subarray(16,28);
     const ct   = packed.subarray(28);
-    const { baseKey, extra } = await buildBaseKey();
-    const key  = await deriveAesKey(baseKey, salt, extra);
-    const pt   = await decryptAesGcm(ct, key, iv);
-    outText.value = dec.decode(pt);
-    setStatus('復号しました');
+
+    // 互換復号（過去バージョンの画像鍵方式も試します）
+    const variants = ['PD','DH','RAW'];
+    let lastErr = null;
+    for (const v of variants){
+      try{
+        const { baseKey, extra } = await buildBaseKey(v);
+        const key  = await deriveAesKey(baseKey, salt, extra);
+        const pt   = await decryptAesGcm(ct, key, iv);
+        outText.value = dec.decode(pt);
+        setStatus(v === 'PD' ? '復号しました' : '復号しました（互換モード）');
+        return;
+      }catch(err){
+        lastErr = err;
+      }
+    }
+    throw lastErr || new Error('復号できませんでした');
   }catch(e){
     setStatus('復号できませんでした: ' + (e.message || String(e)), true);
   }
 });
+
 
 copyBtn.addEventListener('click', async ()=>{
   const v = outText.value || '';
@@ -525,9 +654,34 @@ clearBtn.addEventListener('click', ()=>{
 
 // ===== PWA =====
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=9', { scope: './' })
-    .then(() => console.log('SW registered'))
-    .catch(console.error);
+  let refreshing = false;
+  navigator.serviceWorker.register('./sw.js?v=1.0.7', { scope: './', updateViaCache: 'none' })
+    .then((reg) => {
+      // Force an update check ASAP
+      try { reg.update(); } catch (_) {}
+
+      // If an updated SW is already waiting, activate it now
+      if (reg.waiting) {
+        reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }
+
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            sw.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+    })
+    .catch(() => { /* ignore */ });
+
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
 }
 </script>
 </body>
