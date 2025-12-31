@@ -1,5 +1,5 @@
-// sw.js (v1.0.7) — force-update friendly
-const VERSION = '1.0.7';
+// sw.js (v1.0.8) — force-update friendly
+const VERSION = '1.0.8';
 const CACHE = `ephemeralcypher-${VERSION}`;
 const ASSETS = [
   './',
@@ -20,65 +20,45 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(
-      keys
-        .filter(k => k.startsWith('ephemeralcypher-') && k !== CACHE)
-        .map(k => caches.delete(k))
-    );
+    await Promise.all(keys.map(k => (k !== CACHE) ? caches.delete(k) : Promise.resolve()));
     await self.clients.claim();
   })());
 });
 
-self.addEventListener('message', (event) => {
-  const data = event.data || {};
-  if (data && data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
-async function networkFirst(request) {
+async function cacheFirst(req){
   const cache = await caches.open(CACHE);
-  try {
-    const fresh = await fetch(request, { cache: 'no-store' });
-    if (fresh && fresh.ok) {
-      cache.put(request, fresh.clone());
-    }
-    return fresh;
-  } catch (e) {
-    const cached = await cache.match(request);
-    return cached || Response.error();
-  }
+  const hit = await cache.match(req, { ignoreSearch: true });
+  if (hit) return hit;
+  const res = await fetch(req);
+  if (res && res.ok) cache.put(req, res.clone());
+  return res;
 }
 
-async function cacheFirst(request) {
+async function networkFirst(req){
   const cache = await caches.open(CACHE);
-  const cached = await cache.match(request);
-  if (cached) return cached;
-  const fresh = await fetch(request, { cache: 'no-store' });
-  if (fresh && fresh.ok) {
-    cache.put(request, fresh.clone());
+  try{
+    const res = await fetch(req, { cache: 'no-store' });
+    if (res && res.ok) cache.put(req, res.clone());
+    return res;
+  }catch(e){
+    const hit = await cache.match(req, { ignoreSearch: true });
+    if (hit) return hit;
+    throw e;
   }
-  return fresh;
 }
 
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET') return;
-
   const url = new URL(req.url);
-
-  // Only handle same-origin requests (don't interfere with proxies / APIs)
   if (url.origin !== self.location.origin) return;
 
   const accept = req.headers.get('accept') || '';
   const isHTML = req.mode === 'navigate' || accept.includes('text/html');
 
-  // Ensure index.html (navigation) refreshes quickly
   if (isHTML) {
     event.respondWith(networkFirst(req));
     return;
   }
 
-  // Static assets
   event.respondWith(cacheFirst(req));
 });

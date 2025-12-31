@@ -1,14 +1,24 @@
 {
   "name": "EphemeralCypher",
   "short_name": "EphemeralCypher",
-  "description": "HTMLと（任意で）画像情報から一時鍵を生成してAES-GCMで暗号/復号するPWA",
+  "description": "A minimal PWA that derives a transient key from an HTML file and/or an image, then encrypts/decrypts with AES-GCM.",
   "start_url": ".",
   "scope": ".",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#111111",
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
   ]
 }

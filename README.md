@@ -1,24 +1,9 @@
-# EphemeralCypher (Minimal / No Passphrase)
+# EphemeralCypher (v1.0.8)
 
-合言葉なしで使える、インストール型の暗号アプリ（PWA）です。  
-**鍵素材は「HTML（URL/ファイル）」と「画像ファイル」**で作ります（どちらか1つ以上が必須）。
+Minimal UI.
 
-## 特徴
-- 画面は最小：**鍵素材 + メッセージ + 暗号化/復号**
-- 画像鍵は **見た目ベースのハッシュ（pHash + pHash + dHash）**：JPEGをコピー/再保存してバイト列が変わっても一致しやすい  
-  ※ 大きな編集・トリミング・極端な解像度変更があると失敗することがあります
+- Select an HTML file and/or an image.
+- Paste/type a message.
+- Encrypt / Decrypt.
 
-## 使い方
-1. 鍵素材を選ぶ  
-   - HTML：URL を入れる or HTMLファイルを選ぶ  
-   - 画像：画像ファイルを選ぶ
-2. メッセージ欄に平文を入れて **暗号化**  
-3. 出てきた暗号文（base64）を共有  
-4. 同じ鍵素材を用意して、暗号文を貼り付けて **復号**
-
-## デプロイ
-GitHub Pages などにこのフォルダをそのまま置くだけで動きます。
-
-
-## 互換性
-- 復号時は、旧方式（dHash文字列 / 生バイト）も自動的に試すため、過去バージョンで暗号化したテキストも復号できる可能性があります。
+Language auto-detects (ja/en). You can force with ?lang=ja or ?lang=en.
