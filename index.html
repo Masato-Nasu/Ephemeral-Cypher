@@ -448,11 +448,11 @@ function updateChips(){
   urlWarn.style.display = (urlUsed && !hasLocal) ? 'block' : 'none';
 
   const hasKey = hasHtml || hasImg;
-  const hasMsg = !!msgInput.value.trim();
-  const hasCipher = !!cipherInput.value.trim();
+  const hasText = !!msgInput.value.trim();
 
-  encryptBtn.disabled = !(hasKey && hasMsg);
-  decryptBtn.disabled = !(hasKey && hasCipher);
+  // 入力欄は「平文/暗号文」共用
+  encryptBtn.disabled = !(hasKey && hasText);
+  decryptBtn.disabled = !(hasKey && hasText);
 }
 
 
@@ -525,7 +525,7 @@ clearBtn.addEventListener('click', ()=>{
 
 // ===== PWA =====
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=8', { scope: './' })
+  navigator.serviceWorker.register('./sw.js?v=9', { scope: './' })
     .then(() => console.log('SW registered'))
     .catch(console.error);
 }
