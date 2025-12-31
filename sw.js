@@ -1,5 +1,5 @@
-/* EphemeralCypher SW v1.1.2 */
-const CACHE = "ephemeralcypher-112";
+/* EphemeralCypher SW v1.1.3 */
+const CACHE = "ephemeralcypher-113";
 const ASSETS = [
   "./",
   "./index.html",
