@@ -349,6 +349,14 @@ async function encryptFlow(){
       if (!extra) throw new Error('画像が指定されていません（ローカル画像を選ぶか、URLページの<img>をご利用ください）');
     }
 
+    // 🔒 空鍵禁止：passphrase / HTML / 画像 のどれかは必須
+    const hasHtml = !!(fileInput.files[0] || urlInput.value.trim());
+    const hasImg  = !!(imgInput.files && imgInput.files[0]);
+    const hasPass = !!(pass && pass.length);
+    if (!hasPass && !hasHtml && !hasImg){
+      throw new Error('鍵素材が空です：URL/HTML/画像/パスフレーズのいずれかを指定してください（安全上、空鍵は禁止）');
+    }
+
     const salt = crypto.getRandomValues(new Uint8Array(12));
     const iv   = crypto.getRandomValues(new Uint8Array(12));
     const key  = await deriveAesKey(baseHash, pass, salt, extra);
@@ -383,6 +391,16 @@ async function decryptFlow(){
     const baseHash = await getBaseHashHTML(true);
     const pass = passInput.value || "";
     const url = urlInput.value.trim();
+
+    // ⚠️ 鍵素材が空のまま復号すると「暗号文だけで復号できる」状態になり得ます（過去データ救出用途のみ）
+    const hasHtml = !!(fileInput.files[0] || url);
+    const hasImg  = !!(imgInput.files && imgInput.files[0]);
+    const hasPass = !!(pass && pass.length);
+    if (!hasPass && !hasHtml && !hasImg){
+      const ok = confirm('⚠️ 鍵素材が空です。これは「暗号文だけで復号できる」危険な状態です。過去の暗号文救出目的でのみ続行してください。\n\n続行しますか？');
+      if (!ok) throw new Error('鍵素材が未指定のため中止しました');
+    }
+
     const tryList = [];
 
     if (tryStrictHtmlCb.checked){
@@ -455,7 +473,7 @@ setStatus('準備完了 — HTMLだけ／JPEGだけ／両方で鍵を作れま�
 <script>
 let deferredPrompt = null;
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=4', { scope: './' })
+  navigator.serviceWorker.register('./sw.js?v=5', { scope: './' })
     .then(() => console.log('SW registered'))
     .catch(console.error);
 }
