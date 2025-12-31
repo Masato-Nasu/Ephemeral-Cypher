@@ -101,7 +101,7 @@
     </div>
     <div>
       <p class="title">EphemeralCypher</p>
-      <p class="sub">鍵素材（HTML/画像）とメッセージだけ。余計な設定はありません。</p>
+      <p class="sub">鍵素材（HTML または 画像）とメッセージだけ。余計な設定はありません。</p>
     </div>
   </div>
 
@@ -202,12 +202,40 @@ async function sha256Bytes(bytes){
   return new Uint8Array(buf);
 }
 
-function normalizeHtmlText(html){
-  let t = html.replace(/\r\n?/g,'\n');
-  t = t.replace(/<!--([\s\S]*?)-->/g, '');
-  t = t.replace(/^\s*<\?xml[^>]*\?>/i, '');
-  return t.trim();
+function stableHtmlText(html){
+  try{
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    // remove noisy nodes
+    doc.querySelectorAll('script,style,noscript,template').forEach(n=>n.remove());
+
+    const title = (doc.querySelector('title')?.textContent || '').trim();
+    const ogt   = (doc.querySelector('meta[property="og:title"]')?.getAttribute('content') || '').trim();
+    const desc  = (doc.querySelector('meta[name="description"]')?.getAttribute('content') || '').trim();
+    const canon = (doc.querySelector('link[rel="canonical"]')?.getAttribute('href') || '').trim();
+
+    const body = doc.body ? (doc.body.innerText || doc.body.textContent || '') : '';
+    let t = [title, ogt, desc, canon, body].filter(Boolean).join('\n');
+
+    // normalize
+    t = t.replace(/\r\n?/g,'\n');
+    t = t.replace(/<!--[\s\S]*?-->/g, '');
+    t = t.replace(/^\s*<\?xml[^>]*\?>/i, '');
+    t = t.replace(/\s+/g,' ').trim();
+
+    // cap to keep it fast & stable
+    if (t.length > 200000) t = t.slice(0, 200000);
+    return t;
+  }catch(e){
+    // fallback: minimal normalization
+    let t = String(html || '').replace(/\r\n?/g,'\n');
+    t = t.replace(/<!--[\s\S]*?-->/g, '');
+    t = t.replace(/^\s*<\?xml[^>]*\?>/i, '');
+    t = t.replace(/\s+/g,' ').trim();
+    if (t.length > 200000) t = t.slice(0, 200000);
+    return t;
+  }
 }
+
 
 async function readFileText(file){
   return new Promise((resolve,reject)=>{
@@ -219,11 +247,21 @@ async function readFileText(file){
 }
 
 async function fetchTextViaProxy(url){
-  const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-  const res = await fetch(proxy, { cache:'no-store' });
-  if (!res.ok) throw new Error('ページ取得失敗: ' + res.status);
-  return await res.text();
+  const proxy = 'https://r.jina.ai/http' + (url.startsWith('https://') ? 's' : '') + '://' + url.replace(/^https?:\/\//,'');
+  const ac = new AbortController();
+  const timer = setTimeout(()=>ac.abort(), 9000);
+  try{
+    const res = await fetch(proxy, { cache:'no-store', signal: ac.signal });
+    if (!res.ok) throw new Error('ページ取得失敗: ' + res.status);
+    return await res.text();
+  }catch(e){
+    if (e && e.name === 'AbortError') throw new Error('ページ取得がタイムアウトしました');
+    throw e;
+  }finally{
+    clearTimeout(timer);
+  }
 }
+
 
 async function fetchImageBlobViaProxy(url){
   const proxy = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
@@ -250,11 +288,11 @@ async function getHtmlHash(){
   const url = urlInput.value.trim();
   if (f){
     const t = await readFileText(f);
-    return await sha256Bytes(enc.encode(normalizeHtmlText(t)));
+    return await sha256Bytes(enc.encode(stableHtmlText(t)));
   }
   if (url){
     const raw = await fetchTextViaProxy(url);
-    return await sha256Bytes(enc.encode(normalizeHtmlText(raw)));
+    return await sha256Bytes(enc.encode(stableHtmlText(raw)));
   }
   return null;
 }
@@ -324,19 +362,12 @@ async function drawImageToRGBA(blob, w, h){
 
 async function getImageHash(){
   const f = imgInput.files[0];
-  const url = urlInput.value.trim();
   if (f){
     return await imageKeyHashFromBlob(f);
   }
-  if (url){
-    const raw = await fetchTextViaProxy(url);
-    const imgUrl = await getFirstImageURLFromHtml(raw, url);
-    if (!imgUrl) return null;
-    const blob = await fetchImageBlobViaProxy(imgUrl);
-    return await imageKeyHashFromBlob(blob);
-  }
   return null;
 }
+
 
 
 async function buildBaseKey(){
@@ -388,23 +419,42 @@ function randomBytes(n){
 
 // ===== UI =====
 function updateChips(){
+  // URL と HTMLファイルは「どちらか一方」に固定（混ざると復号失敗の原因になる）
+  const hasHtmlFile = !!fileInput.files[0];
+
+  if (hasHtmlFile){
+    urlInput.value = '';
+    urlInput.disabled = true;
+  }else{
+    urlInput.disabled = false;
+  }
+
+  // URL入力がある場合は HTMLファイル選択を解除
+  const url = urlInput.value.trim();
+  if (url && fileInput.files.length){
+    fileInput.value = '';
+  }
+
   const hasHtml = !!fileInput.files[0] || !!urlInput.value.trim();
-  const hasImg  = !!imgInput.files[0]  || !!urlInput.value.trim();
+  const hasImg  = !!imgInput.files[0];
+
   chipHtml.textContent = hasHtml ? 'HTML: 選択あり' : 'HTML: 未選択';
   chipImg.textContent  = hasImg  ? '画像: 選択あり' : '画像: 未選択';
   chipHtml.className = 'chip' + (hasHtml ? ' on' : '');
   chipImg.className  = 'chip' + (hasImg  ? ' on' : '');
 
-  const url = urlInput.value.trim();
+  const urlUsed = !!urlInput.value.trim() && !fileInput.files[0];
   const hasLocal = !!fileInput.files[0] || !!imgInput.files[0];
-  urlWarn.style.display = (url && !hasLocal) ? 'block' : 'none';
+  urlWarn.style.display = (urlUsed && !hasLocal) ? 'block' : 'none';
 
-  // ボタン活性
-  const hasKeyMaybe = !!url || !!fileInput.files[0] || !!imgInput.files[0];
+  const hasKey = hasHtml || hasImg;
   const hasMsg = !!msgInput.value.trim();
-  encryptBtn.disabled = !(hasKeyMaybe && hasMsg);
-  decryptBtn.disabled = !(hasKeyMaybe && hasMsg);
+  const hasCipher = !!cipherInput.value.trim();
+
+  encryptBtn.disabled = !(hasKey && hasMsg);
+  decryptBtn.disabled = !(hasKey && hasCipher);
 }
+
 
 [urlInput, fileInput, imgInput, msgInput].forEach(el=>{
   el.addEventListener('input', updateChips);
@@ -475,7 +525,7 @@ clearBtn.addEventListener('click', ()=>{
 
 // ===== PWA =====
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=7', { scope: './' })
+  navigator.serviceWorker.register('./sw.js?v=8', { scope: './' })
     .then(() => console.log('SW registered'))
     .catch(console.error);
 }
