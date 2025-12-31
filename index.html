@@ -106,6 +106,11 @@
     </div>
 
     <div>
+      <label data-i18n="key_html"></label>
+      <input id="htmlInput" type="file" accept="text/html,.html,.htm">
+    </div>
+
+    <div style="grid-column: 1 / -1;">
       <label data-i18n="key_image"></label>
       <input id="imgInput" type="file" accept="image/*">
     </div>
@@ -130,6 +135,7 @@
 const I18N = {
   en: {
     key_url: "Key material: Web page URL",
+    key_html: "Key material: HTML",
     key_image: "Key material: Image",
     message: "Message (plain text or base64 ciphertext)",
     encrypt: "Encrypt",
@@ -137,7 +143,7 @@ const I18N = {
     url_placeholder: "https://example.com",
     placeholder: "Type here…",
     ready: "Ready",
-    hint_key: "Enter a URL and/or select an image.",
+    hint_key: "Add a URL, HTML, or image.",
     hint_msg: "Enter a message.",
     encrypting: "Encrypting…",
     decrypting: "Decrypting…",
@@ -157,7 +163,7 @@ const I18N = {
     url_placeholder: "https://example.com",
     placeholder: "ここに入力…",
     ready: "準備完了",
-    hint_key: "URLを入力するか画像を選択してください。",
+    hint_key: "URL/HTML/画像のいずれかを用意してください。",
     hint_msg: "メッセージを入力してください。",
     encrypting: "暗号化中…",
     decrypting: "復号中…",
@@ -188,7 +194,8 @@ document.querySelectorAll('[data-i18n]').forEach(el => {
 /* ========= DOM ========= */
 const enc = new TextEncoder(), dec = new TextDecoder();
 const urlInput  = document.getElementById('urlInput');
-const imgInput  = document.getElementById('imgInput');
+const htmlInput = document.getElementById('htmlInput');
+const imgInput  = document.getElementById('imgInput');  = document.getElementById('imgInput');
 const msgInput  = document.getElementById('messageInput');
 const encryptBtn = document.getElementById('encryptBtn');
 const decryptBtn = document.getElementById('decryptBtn');
@@ -300,6 +307,11 @@ async function fetchHtmlText(url){
 }
 
 async function getHtmlHash(){
+  const f = htmlInput.files && htmlInput.files[0];
+  if (f){
+    const t = await readFileText(f);
+    return await sha256Bytes(enc.encode(normalizeHtmlText(t)));
+  }
   const url = normalizeUrlInput(urlInput.value);
   if (!url) return null;
   const t0 = await fetchHtmlText(url);
@@ -490,7 +502,12 @@ function randomBytes(n){
 
 /* ========= UI logic ========= */
 function updateState(){
-  const hasKey = !!urlInput.value.trim() || !!imgInput.files[0];
+  // Keep URL and HTML file mutually exclusive (prevents accidental mismatches).
+  const hasHtml = !!(htmlInput.files && htmlInput.files[0]);
+  if (hasHtml && urlInput.value) urlInput.value = '';
+  if (!hasHtml && urlInput.value.trim() && htmlInput.value) htmlInput.value = '';
+
+  const hasKey = !!urlInput.value.trim() || !!hasHtml || !!imgInput.files[0];
   const hasMsg = !!msgInput.value.trim();
   encryptBtn.disabled = !(hasKey && hasMsg);
   decryptBtn.disabled = !(hasKey && hasMsg);
@@ -500,6 +517,7 @@ function updateState(){
   else setStatus(t('ready'));
 }
 urlInput.addEventListener('input', updateState);
+htmlInput.addEventListener('change', updateState);
 imgInput.addEventListener('change', updateState);
 msgInput.addEventListener('input', updateState);
 
@@ -564,7 +582,7 @@ updateState();
 
 /* ========= SW ========= */
 if ('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js?v=1.0.9', { scope:'./', updateViaCache:'none' })
+  navigator.serviceWorker.register('./sw.js?v=1.1.0', { scope:'./', updateViaCache:'none' })
     .catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange', ()=>{
     if (window.__ec_reloaded) return;
