@@ -1,0 +1,25 @@
+// index.html の service worker 登録部分を、これに置き換えてください。
+if ('serviceWorker' in navigator) {
+  let refreshing = false;
+  navigator.serviceWorker.register('./sw.js?v=1.0.6', { scope: './', updateViaCache: 'none' })
+    .then((reg) => {
+      try { reg.update(); } catch (_) {}
+      if (reg.waiting) reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+
+      reg.addEventListener('updatefound', () => {
+        const sw = reg.installing;
+        if (!sw) return;
+        sw.addEventListener('statechange', () => {
+          if (sw.state === 'installed' && navigator.serviceWorker.controller) {
+            sw.postMessage({ type: 'SKIP_WAITING' });
+          }
+        });
+      });
+    })
+    .catch(() => {});
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (refreshing) return;
+    refreshing = true;
+    window.location.reload();
+  });
+}

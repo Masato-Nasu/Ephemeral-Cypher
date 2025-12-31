@@ -1,5 +1,6 @@
-// sw.js (v1.0.5) — simpler and Android-friendly
-const CACHE = 'ephemeralcypher-v1.0.5';
+// sw.js (v1.0.6) — force-update friendly
+const VERSION = '1.0.6';
+const CACHE = `ephemeralcypher-${VERSION}`;
 const ASSETS = [
   './',
   './index.html',
@@ -9,58 +10,75 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', (event) => {
-  event.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
-  self.skipWaiting();
+  event.waitUntil((async () => {
+    const cache = await caches.open(CACHE);
+    await cache.addAll(ASSETS);
+    await self.skipWaiting();
+  })());
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(caches.keys().then(keys => Promise.all(keys.map(k => k !== CACHE && caches.delete(k)))));
-  self.clients.claim();
+  event.waitUntil((async () => {
+    const keys = await caches.keys();
+    await Promise.all(
+      keys
+        .filter(k => k.startsWith('ephemeralcypher-') && k !== CACHE)
+        .map(k => caches.delete(k))
+    );
+    await self.clients.claim();
+  })());
 });
 
-self.addEventListener('fetch', (event) => {
-  const { request } = event;
-  const url = new URL(request.url);
-
-  // Navigation requests → offline fallback to index.html
-  if (request.mode === 'navigate') {
-    event.respondWith((async () => {
-      try {
-        const fresh = await fetch(request);
-        const cache = await caches.open(CACHE);
-        cache.put('./index.html', fresh.clone());
-        return fresh;
-      } catch (e) {
-        const cache = await caches.open(CACHE);
-        return (await cache.match('./index.html')) || Response.error();
-      }
-    })());
-    return;
+self.addEventListener('message', (event) => {
+  const data = event.data || {};
+  if (data && data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
+});
 
-  // App assets → stale-while-revalidate
-  if (ASSETS.includes(url.pathname.endsWith('/') ? './' : '.' + url.pathname.substring(url.pathname.lastIndexOf('/')))) {
-    event.respondWith((async () => {
-      const cache = await caches.open(CACHE);
-      const cached = await cache.match(request);
-      const network = fetch(request).then(res => {
-        if (res && res.ok) cache.put(request, res.clone());
-        return res;
-      }).catch(() => null);
-      return cached || network || Response.error();
-    })());
-    return;
-  }
-
-  // Other requests (e.g., allorigins) → network-first with fallback cache
-  event.respondWith((async () => {
-    try {
-      const res = await fetch(request);
-      return res;
-    } catch (e) {
-      const cache = await caches.open(CACHE);
-      const cached = await cache.match(request);
-      return cached || Response.error();
+async function networkFirst(request) {
+  const cache = await caches.open(CACHE);
+  try {
+    const fresh = await fetch(request, { cache: 'no-store' });
+    if (fresh && fresh.ok) {
+      cache.put(request, fresh.clone());
     }
-  })());
+    return fresh;
+  } catch (e) {
+    const cached = await cache.match(request);
+    return cached || Response.error();
+  }
+}
+
+async function cacheFirst(request) {
+  const cache = await caches.open(CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+  const fresh = await fetch(request, { cache: 'no-store' });
+  if (fresh && fresh.ok) {
+    cache.put(request, fresh.clone());
+  }
+  return fresh;
+}
+
+self.addEventListener('fetch', (event) => {
+  const req = event.request;
+  if (req.method !== 'GET') return;
+
+  const url = new URL(req.url);
+
+  // Only handle same-origin requests (don't interfere with proxies / APIs)
+  if (url.origin !== self.location.origin) return;
+
+  const accept = req.headers.get('accept') || '';
+  const isHTML = req.mode === 'navigate' || accept.includes('text/html');
+
+  // Ensure index.html (navigation) refreshes quickly
+  if (isHTML) {
+    event.respondWith(networkFirst(req));
+    return;
+  }
+
+  // Static assets
+  event.respondWith(cacheFirst(req));
 });
