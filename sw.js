@@ -1,5 +1,5 @@
-// sw.js (v1.1.0) — force-update friendly
-const VERSION = '1.1.0';
+// sw.js (v1.1.1) — force-update friendly
+const VERSION = '1.1.1';
 const CACHE = `ephemeralcypher-${VERSION}`;
 const ASSETS = [
   './',

@@ -39,6 +39,7 @@
     box-shadow: 0 12px 32px rgba(0,0,0,.35);
   }
   .title{font-size:18px;font-weight:700;letter-spacing:.2px;margin:0}
+  .subtitle{margin:.25rem 0 0;font-size:12px;opacity:.75;line-height:1.35}
   .sub{margin:2px 0 0 0;color:var(--muted);font-size:13px}
   .card{
     background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
@@ -96,6 +97,7 @@
     <div class="logo"></div>
     <div>
       <p class="title">EphemeralCypher</p>
+      <p class="subtitle" data-i18n="subtitle"></p>
     </div>
   </div>
 
@@ -138,6 +140,7 @@ const I18N = {
     key_html: "Key material: HTML",
     key_image: "Key material: Image",
     message: "Message (plain text or base64 ciphertext)",
+    subtitle: "Pick URL/HTML and/or an image, type a message, then Encrypt or Decrypt.",
     encrypt: "Encrypt",
     decrypt: "Decrypt",
     url_placeholder: "https://example.com",
@@ -158,6 +161,7 @@ const I18N = {
     key_url: "鍵素材：ページURL",
     key_image: "鍵素材：画像ファイル",
     message: "メッセージ（平文 または 暗号文 base64）",
+    subtitle: "URL/HTML/画像のいずれかを用意し、メッセージを入力して、暗号化／復号を押してください。",
     encrypt: "暗号化",
     decrypt: "復号",
     url_placeholder: "https://example.com",
@@ -582,7 +586,7 @@ updateState();
 
 /* ========= SW ========= */
 if ('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js?v=1.1.0', { scope:'./', updateViaCache:'none' })
+  navigator.serviceWorker.register('./sw.js?v=1.1.1', { scope:'./', updateViaCache:'none' })
     .catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange', ()=>{
     if (window.__ec_reloaded) return;
