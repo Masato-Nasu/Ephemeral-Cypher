@@ -101,8 +101,8 @@
 
   <div class="card grid cols2">
     <div>
-      <label data-i18n="key_html"></label>
-      <input id="fileInput" type="file" accept=".html,text/html">
+      <label data-i18n="key_url"></label>
+      <input id="urlInput" type="url" inputmode="url" spellcheck="false" autocomplete="off">
     </div>
 
     <div>
@@ -129,14 +129,15 @@
 /* ========= i18n ========= */
 const I18N = {
   en: {
-    key_html: "Key material: HTML file",
+    key_url: "Key material: Web page URL",
     key_image: "Key material: Image",
     message: "Message (plain text or base64 ciphertext)",
     encrypt: "Encrypt",
     decrypt: "Decrypt",
+    url_placeholder: "https://example.com",
     placeholder: "Type here…",
     ready: "Ready",
-    hint_key: "Select an HTML file and/or an image.",
+    hint_key: "Enter a URL and/or select an image.",
     hint_msg: "Enter a message.",
     encrypting: "Encrypting…",
     decrypting: "Decrypting…",
@@ -148,14 +149,15 @@ const I18N = {
     err_decrypt: "Decryption failed."
   },
   ja: {
-    key_html: "鍵素材：HTMLファイル",
+    key_url: "鍵素材：ページURL",
     key_image: "鍵素材：画像ファイル",
     message: "メッセージ（平文 または 暗号文 base64）",
     encrypt: "暗号化",
     decrypt: "復号",
+    url_placeholder: "https://example.com",
     placeholder: "ここに入力…",
     ready: "準備完了",
-    hint_key: "HTMLファイルか画像を選択してください。",
+    hint_key: "URLを入力するか画像を選択してください。",
     hint_msg: "メッセージを入力してください。",
     encrypting: "暗号化中…",
     decrypting: "復号中…",
@@ -185,7 +187,7 @@ document.querySelectorAll('[data-i18n]').forEach(el => {
 
 /* ========= DOM ========= */
 const enc = new TextEncoder(), dec = new TextDecoder();
-const fileInput = document.getElementById('fileInput');
+const urlInput  = document.getElementById('urlInput');
 const imgInput  = document.getElementById('imgInput');
 const msgInput  = document.getElementById('messageInput');
 const encryptBtn = document.getElementById('encryptBtn');
@@ -193,6 +195,7 @@ const decryptBtn = document.getElementById('decryptBtn');
 const statusEl   = document.getElementById('status');
 
 msgInput.placeholder = t('placeholder');
+urlInput.placeholder = t('url_placeholder');
 
 function setStatus(text, isError=false){
   statusEl.textContent = text || "";
@@ -252,12 +255,57 @@ function readFileText(f){
 }
 
 /* ========= HTML key ========= */
+function normalizeUrlInput(raw){
+  let s = (raw || '').trim();
+  if (!s) return '';
+  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
+  return s;
+}
+function isPrivateHost(host){
+  if (!host) return true;
+  host = host.toLowerCase();
+  if (host === 'localhost' || host.endsWith('.local')) return true;
+  if (/^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host)) return true;
+  return false;
+}
+async function fetchTextWithTimeout(url, ms=9000){
+  const ctrl = new AbortController();
+  const id = setTimeout(()=>ctrl.abort(), ms);
+  try{
+    const res = await fetch(url, {
+      signal: ctrl.signal,
+      cache: 'no-store',
+      redirect: 'follow',
+      mode: 'cors',
+      credentials: 'omit',
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.text();
+  } finally {
+    clearTimeout(id);
+  }
+}
+async function fetchHtmlText(url){
+  try {
+    return await fetchTextWithTimeout(url, 9000);
+  } catch (e) {
+    try{
+      const u = new URL(url);
+      if (isPrivateHost(u.hostname)) throw e;
+      return await fetchTextWithTimeout('https://r.jina.ai/' + url, 9000);
+    } catch(_) {
+      throw e;
+    }
+  }
+}
+
 async function getHtmlHash(){
-  const f = fileInput.files[0];
-  if (!f) return null;
-  const t0 = await readFileText(f);
+  const url = normalizeUrlInput(urlInput.value);
+  if (!url) return null;
+  const t0 = await fetchHtmlText(url);
   return await sha256Bytes(enc.encode(normalizeHtmlText(t0)));
 }
+
 
 /* ========= Image hash ========= */
 async function createBitmapSafe(blob){
@@ -442,7 +490,7 @@ function randomBytes(n){
 
 /* ========= UI logic ========= */
 function updateState(){
-  const hasKey = !!fileInput.files[0] || !!imgInput.files[0];
+  const hasKey = !!urlInput.value.trim() || !!imgInput.files[0];
   const hasMsg = !!msgInput.value.trim();
   encryptBtn.disabled = !(hasKey && hasMsg);
   decryptBtn.disabled = !(hasKey && hasMsg);
@@ -451,7 +499,7 @@ function updateState(){
   else if (!hasMsg) setStatus(t('hint_msg'));
   else setStatus(t('ready'));
 }
-fileInput.addEventListener('change', updateState);
+urlInput.addEventListener('input', updateState);
 imgInput.addEventListener('change', updateState);
 msgInput.addEventListener('input', updateState);
 
@@ -516,7 +564,7 @@ updateState();
 
 /* ========= SW ========= */
 if ('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js?v=1.0.8', { scope:'./', updateViaCache:'none' })
+  navigator.serviceWorker.register('./sw.js?v=1.0.9', { scope:'./', updateViaCache:'none' })
     .catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange', ()=>{
     if (window.__ec_reloaded) return;

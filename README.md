@@ -1,8 +1,8 @@
-# EphemeralCypher (v1.0.8)
+# EphemeralCypher (v1.0.9)
 
 Minimal UI.
 
-- Select an HTML file and/or an image.
+- Enter a web page URL and/or an image.
 - Paste/type a message.
 - Encrypt / Decrypt.
 
