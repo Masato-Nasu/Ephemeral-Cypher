@@ -1,5 +1,5 @@
-// sw.js (v1.0.2) — simpler and Android-friendly
-const CACHE = 'ephemeralcypher-v1.0.2';
+// sw.js (v1.0.3) — simpler and Android-friendly
+const CACHE = 'ephemeralcypher-v1.0.3';
 const ASSETS = [
   './',
   './index.html',

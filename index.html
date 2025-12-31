@@ -125,7 +125,7 @@
     <div>
       <label>鍵素材：画像ファイル（任意）</label>
       <input id="imgInput" type="file" accept="image/*">
-      <div class="mini">※ 画像鍵は「同一ファイル」で復号できます（再保存や再圧縮で失敗することがあります）。</div>
+      <div class="mini">※ 画像鍵はコピー/再保存でも動きやすい方式です（大きな編集・トリミング・解像度変更が大きいと失敗することがあります）。</div>
     </div>
 
     <div style="grid-column: 1 / -1;">
@@ -259,23 +259,85 @@ async function getHtmlHash(){
   return null;
 }
 
+async function imageKeyHashFromBlob(blob){
+  // 見た目ベースのハッシュ（再保存・コピーでバイト列が変わっても一致しやすい）
+  const a = await aHash64(blob); // 8 bytes
+  const d = await dHash64(blob); // 8 bytes
+  return await sha256Bytes(concatBytes(new Uint8Array([0x41,0x44]), a, d)); // 'A''D'
+}
+
+function packBits64ToBytes(bits){
+  // bits: Array<boolean> length 64
+  const out = new Uint8Array(8);
+  for (let i=0;i<64;i++){
+    if (bits[i]) out[i>>3] |= (1 << (7-(i&7)));
+  }
+  return out;
+}
+
+async function aHash64(blob){
+  const w=8,h=8;
+  const {data} = await drawImageToRGBA(blob, w, h);
+  const gray = new Float32Array(w*h);
+  let sum=0;
+  for (let i=0;i<w*h;i++){
+    const r=data[i*4], g=data[i*4+1], b=data[i*4+2];
+    const v = 0.299*r + 0.587*g + 0.114*b;
+    gray[i]=v; sum+=v;
+  }
+  const avg = sum/(w*h);
+  const bits = new Array(64);
+  for (let i=0;i<64;i++) bits[i] = gray[i] >= avg;
+  return packBits64ToBytes(bits);
+}
+
+async function dHash64(blob){
+  const w=9,h=8;
+  const {data} = await drawImageToRGBA(blob, w, h);
+  const bits = new Array(64);
+  let k=0;
+  for (let y=0;y<h;y++){
+    for (let x=0;x<w-1;x++){
+      const i1=(y*w+x)*4, i2=(y*w+(x+1))*4;
+      const g1 = 0.299*data[i1] + 0.587*data[i1+1] + 0.114*data[i1+2];
+      const g2 = 0.299*data[i2] + 0.587*data[i2+1] + 0.114*data[i2+2];
+      bits[k++] = g1 > g2;
+    }
+  }
+  return packBits64ToBytes(bits);
+}
+
+async function drawImageToRGBA(blob, w, h){
+  const bmp = await createImageBitmap(blob);
+  try{
+    const c = document.createElement('canvas');
+    c.width = w; c.height = h;
+    const ctx = c.getContext('2d', { willReadFrequently:true });
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(bmp, 0, 0, w, h);
+    const img = ctx.getImageData(0,0,w,h);
+    return { data: img.data };
+  }finally{
+    try{ bmp.close(); }catch(e){}
+  }
+}
+
 async function getImageHash(){
   const f = imgInput.files[0];
   const url = urlInput.value.trim();
   if (f){
-    const ab = await f.arrayBuffer();
-    return await sha256Bytes(new Uint8Array(ab));
+    return await imageKeyHashFromBlob(f);
   }
   if (url){
     const raw = await fetchTextViaProxy(url);
     const imgUrl = await getFirstImageURLFromHtml(raw, url);
     if (!imgUrl) return null;
     const blob = await fetchImageBlobViaProxy(imgUrl);
-    const ab = await blob.arrayBuffer();
-    return await sha256Bytes(new Uint8Array(ab));
+    return await imageKeyHashFromBlob(blob);
   }
   return null;
 }
+
 
 async function buildBaseKey(){
   const htmlHash = await getHtmlHash();
@@ -413,7 +475,7 @@ clearBtn.addEventListener('click', ()=>{
 
 // ===== PWA =====
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('./sw.js?v=6', { scope: './' })
+  navigator.serviceWorker.register('./sw.js?v=7', { scope: './' })
     .then(() => console.log('SW registered'))
     .catch(console.error);
 }
