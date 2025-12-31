@@ -1,23 +1,21 @@
-// sw.js (v1.1.1) — force-update friendly
-const VERSION = '1.1.1';
-const CACHE = `ephemeralcypher-${VERSION}`;
+/* EphemeralCypher SW v1.1.2 */
+const CACHE = "ephemeralcypher-112";
 const ASSETS = [
-  './',
-  './index.html',
-  './manifest.json',
-  './icon-192.png',
-  './icon-512.png'
+  "./",
+  "./index.html",
+  "./manifest.json",
+  "./icon-192.png",
+  "./icon-512.png"
 ];
 
-self.addEventListener('install', (event) => {
-  event.waitUntil((async () => {
-    const cache = await caches.open(CACHE);
-    await cache.addAll(ASSETS);
-    await self.skipWaiting();
-  })());
+self.addEventListener("install", (event) => {
+  self.skipWaiting();
+  event.waitUntil(
+    caches.open(CACHE).then((c) => c.addAll(ASSETS.map(u => u + "?v=112")).catch(()=>c.addAll(ASSETS).catch(()=>null)))
+  );
 });
 
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
     await Promise.all(keys.map(k => (k !== CACHE) ? caches.delete(k) : Promise.resolve()));
@@ -25,40 +23,38 @@ self.addEventListener('activate', (event) => {
   })());
 });
 
-async function cacheFirst(req){
-  const cache = await caches.open(CACHE);
-  const hit = await cache.match(req, { ignoreSearch: true });
-  if (hit) return hit;
-  const res = await fetch(req);
-  if (res && res.ok) cache.put(req, res.clone());
-  return res;
-}
-
-async function networkFirst(req){
-  const cache = await caches.open(CACHE);
-  try{
-    const res = await fetch(req, { cache: 'no-store' });
-    if (res && res.ok) cache.put(req, res.clone());
-    return res;
-  }catch(e){
-    const hit = await cache.match(req, { ignoreSearch: true });
-    if (hit) return hit;
-    throw e;
-  }
-}
-
-self.addEventListener('fetch', (event) => {
+self.addEventListener("fetch", (event) => {
   const req = event.request;
   const url = new URL(req.url);
+
+  // Only handle same-origin
   if (url.origin !== self.location.origin) return;
 
-  const accept = req.headers.get('accept') || '';
-  const isHTML = req.mode === 'navigate' || accept.includes('text/html');
-
-  if (isHTML) {
-    event.respondWith(networkFirst(req));
+  // Navigation: network-first
+  if (req.mode === "navigate") {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(req, {cache:"no-store"});
+        const cache = await caches.open(CACHE);
+        cache.put("./", fresh.clone()).catch(()=>null);
+        return fresh;
+      } catch {
+        const cache = await caches.open(CACHE);
+        return (await cache.match("./")) || (await cache.match("./index.html")) || Response.error();
+      }
+    })());
     return;
   }
 
-  event.respondWith(cacheFirst(req));
+  // Static: stale-while-revalidate
+  event.respondWith((async () => {
+    const cache = await caches.open(CACHE);
+    const cached = await cache.match(req, {ignoreSearch:true});
+    const fetchPromise = fetch(req).then((res) => {
+      if (res && res.ok) cache.put(req, res.clone()).catch(()=>null);
+      return res;
+    }).catch(()=>null);
+
+    return cached || (await fetchPromise) || Response.error();
+  })());
 });

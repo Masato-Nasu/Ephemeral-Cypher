@@ -1,24 +1,20 @@
 {
   "name": "EphemeralCypher",
   "short_name": "EphemeralCypher",
-  "description": "A minimal PWA that derives a transient key from an HTML file and/or an image, then encrypts/decrypts with AES-GCM.",
-  "start_url": ".",
-  "scope": ".",
+  "start_url": "./?v=112",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#111111",
+  "background_color": "#0b0b10",
+  "theme_color": "#0b0b10",
   "icons": [
     {
-      "src": "icon-192.png",
+      "src": "./icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     },
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }

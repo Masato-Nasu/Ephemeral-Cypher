@@ -1,599 +1,885 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>EphemeralCypher</title>
-<link rel="manifest" href="./manifest.json">
-<link rel="icon" href="./icon-192.png" type="image/png">
-<meta name="theme-color" content="#0b0b0f">
-<style>
-  :root{
-    --bg:#0b0b0f;
-    --card:#12121a;
-    --card2:#151523;
-    --text:#f2f2f7;
-    --muted:rgba(242,242,247,.62);
-    --line:rgba(255,255,255,.09);
-    --accent:#b9a7ff;
-    --danger:#ff6b6b;
-  }
-  *{box-sizing:border-box}
-  body{
-    margin:0;
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-    background: radial-gradient(1200px 600px at 20% -10%, rgba(185,167,255,.18), transparent 55%),
-                radial-gradient(900px 500px at 100% 0%, rgba(255,255,255,.08), transparent 55%),
-                var(--bg);
-    color:var(--text);
-  }
-  .wrap{max-width:860px;margin:0 auto;padding:28px 18px 42px}
-  .hero{
-    display:flex;align-items:center;gap:12px;margin-bottom:18px
-  }
-  .logo{
-    width:40px;height:40px;border-radius:14px;
-    background: linear-gradient(145deg, rgba(185,167,255,.26), rgba(255,255,255,.06));
-    border:1px solid var(--line);
-    display:grid;place-items:center;
-    box-shadow: 0 12px 32px rgba(0,0,0,.35);
-  }
-  .title{font-size:18px;font-weight:700;letter-spacing:.2px;margin:0}
-  .subtitle{margin:.25rem 0 0;font-size:12px;opacity:.75;line-height:1.35}
-  .sub{margin:2px 0 0 0;color:var(--muted);font-size:13px}
-  .card{
-    background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.01));
-    border:1px solid var(--line);
-    border-radius:18px;
-    padding:16px;
-    box-shadow: 0 16px 50px rgba(0,0,0,.35);
-  }
-  .grid{display:grid;gap:14px}
-  @media (min-width: 860px){ .grid.cols2{grid-template-columns: 1fr 1fr;} }
-  label{display:block;font-size:12px;color:var(--muted);margin:0 0 8px 2px}
-  input[type="text"], textarea, input[type="file"]{
-    width:100%;
-    background: rgba(255,255,255,.03);
-    border:1px solid var(--line);
-    color:var(--text);
-    border-radius:14px;
-    padding:12px 12px;
-    outline:none;
-  }
-  input[type="file"]{padding:10px}
-  textarea{min-height:132px;resize:vertical;line-height:1.5}
-  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-  .btn{
-    border-radius:14px;border:1px solid var(--line);
-    padding:12px 14px;background: rgba(255,255,255,.04);
-    color:var(--text);font-weight:700;cursor:pointer;
-    transition: transform .06s ease, background .2s ease, border-color .2s ease;
-    user-select:none;
-  }
-  .btn:hover{background: rgba(255,255,255,.06);border-color: rgba(255,255,255,.14)}
-  .btn:active{transform: translateY(1px)}
-  .btn.primary{
-    background: linear-gradient(145deg, rgba(185,167,255,.34), rgba(255,255,255,.06));
-    border-color: rgba(185,167,255,.32);
-  }
-  .btn.danger{border-color: rgba(255,107,107,.35); background: rgba(255,107,107,.08)}
-  .btn:disabled{opacity:.45;cursor:not-allowed;transform:none}
-  .chip{
-    font-size:12px; padding:6px 10px;border-radius:999px;
-    border:1px solid var(--line); color:var(--muted); background: rgba(255,255,255,.02);
-  }
-  .chip.on{color:rgba(242,242,247,.92); border-color: rgba(185,167,255,.35); background: rgba(185,167,255,.10)}
-  .status{margin-top:10px;font-size:12px;color:var(--muted)}
-  .status.err{color: var(--danger)}
-  .hr{height:1px;background: var(--line); margin: 14px 0}
-  .mini{font-size:12px;color:var(--muted);margin: 8px 2px 0}
-  .right{margin-left:auto}
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b0b10" />
+  <link rel="manifest" href="./manifest.json?v=112">
+  <link rel="icon" href="./icon-192.png">
+  <title>EphemeralCypher</title>
+  <style>
+    :root {
+      --bg0:#07070b;
+      --bg1:#0b0b10;
+      --card:#11111a;
+      --card2:#141421;
+      --text:#f2f2f5;
+      --muted:#a9a9b6;
+      --line:rgba(255,255,255,.10);
+      --focus:rgba(160,160,255,.28);
+      --shadow: 0 18px 60px rgba(0,0,0,.55);
+      --r:18px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo", Arial, sans-serif;
+      background:
+        radial-gradient(1000px 500px at 20% 0%, rgba(120,110,255,.25), transparent 50%),
+        radial-gradient(900px 550px at 85% 10%, rgba(90,210,255,.18), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+    }
+    .wrap{
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 34px 18px 38px;
+    }
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom: 14px;
+    }
+    .brand{
+      display:flex; align-items:center; gap:12px;
+      min-width:0;
+    }
+    .dot{
+      width:34px;height:34px;border-radius:12px;
+      background: linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,.06));
+      border:1px solid rgba(255,255,255,.10);
+      box-shadow: 0 10px 28px rgba(0,0,0,.35);
+    }
+    h1{
+      font-size:20px;
+      font-weight:650;
+      letter-spacing:.2px;
+      margin:0;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .sub{
+      margin: 6px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .lang{
+      display:flex; align-items:center; gap:6px;
+      padding:6px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: 999px;
+      user-select:none;
+    }
+    .lang button{
+      appearance:none;
+      border:0;
+      background:transparent;
+      color:var(--muted);
+      font-size:12px;
+      padding:6px 10px;
+      border-radius:999px;
+      cursor:pointer;
+    }
+    .lang button.active{
+      color:var(--text);
+      background: rgba(255,255,255,.10);
+    }
 
-</style>
+    .card{
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      padding: 18px;
+      overflow:hidden;
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    @media (max-width: 820px) {
+      .grid{grid-template-columns:1fr}
+    }
+
+    .field{
+      background: rgba(0,0,0,.16);
+      border:1px solid rgba(255,255,255,.10);
+      border-radius: var(--r);
+      padding: 12px;
+    }
+    .label{
+      font-size:12px;
+      color: var(--muted);
+      margin: 0 0 8px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+    .label .mini{
+      font-size:11px;
+      color: rgba(255,255,255,.50);
+    }
+    input[type="url"], textarea{
+      width:100%;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      padding: 12px 12px;
+      outline: none;
+      font-size: 14px;
+    }
+    input[type="url"]::placeholder, textarea::placeholder{
+      color: rgba(255,255,255,.40);
+    }
+    input[type="url"]:focus, textarea:focus{
+      border-color: rgba(170,170,255,.35);
+      box-shadow: 0 0 0 4px var(--focus);
+    }
+    textarea{
+      min-height: 170px;
+      resize: vertical;
+      line-height:1.5;
+    }
+
+    .fileRow{
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+    .fileBtn{
+      position:relative;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      border-radius: 14px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      cursor:pointer;
+      white-space:nowrap;
+      font-size: 13px;
+      flex:0 0 auto;
+    }
+    .fileBtn:hover{background: rgba(255,255,255,.10)}
+    .fileBtn input{
+      position:absolute;
+      inset:0;
+      opacity:0;
+      cursor:pointer;
+      width:100%;
+      height:100%;
+    }
+    .fileName{
+      flex:1 1 auto;
+      min-width:0;
+      font-size: 13px;
+      color: rgba(255,255,255,.75);
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .clearBtn{
+      appearance:none;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.85);
+      border-radius: 12px;
+      padding: 9px 10px;
+      cursor:pointer;
+      font-size: 13px;
+      line-height: 1;
+      flex:0 0 auto;
+    }
+    .clearBtn:hover{background: rgba(255,255,255,.10)}
+
+    .divider{
+      height:1px;
+      background: rgba(255,255,255,.08);
+      margin: 14px 0;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 12px;
+    }
+    .btn{
+      appearance:none;
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.08);
+      color: var(--text);
+      border-radius: 16px;
+      padding: 12px 14px;
+      cursor:pointer;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing:.2px;
+    }
+    .btn:hover{background: rgba(255,255,255,.10)}
+    .btn.primary{
+      background: linear-gradient(180deg, rgba(160,160,255,.22), rgba(255,255,255,.08));
+      border-color: rgba(160,160,255,.28);
+    }
+    .btn:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .status{
+      margin-top: 10px;
+      font-size: 12px;
+      color: rgba(255,255,255,.72);
+      min-height: 18px;
+    }
+    .status.bad{color: rgba(255,170,170,.95)}
+    .status.ok{color: rgba(180,255,210,.95)}
+
+    footer{
+      margin-top: 14px;
+      font-size: 11px;
+      color: rgba(255,255,255,.35);
+    }
+    a{color:inherit}
+  </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hero">
-    <div class="logo"></div>
-    <div>
-      <p class="title">EphemeralCypher</p>
-      <p class="subtitle" data-i18n="subtitle"></p>
-    </div>
-  </div>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="dot" aria-hidden="true"></div>
+        <div style="min-width:0">
+          <h1 id="title">EphemeralCypher</h1>
+          <div class="sub" id="subtitle"></div>
+        </div>
+      </div>
+      <div class="lang" aria-label="Language">
+        <button id="btnJa" type="button">日本語</button>
+        <button id="btnEn" type="button">EN</button>
+      </div>
+    </header>
 
-  <div class="card grid cols2">
-    <div>
-      <label data-i18n="key_url"></label>
-      <input id="urlInput" type="url" inputmode="url" spellcheck="false" autocomplete="off">
-    </div>
+    <div class="card">
+      <div class="grid">
+        <div class="field" id="htmlField">
+          <div class="label">
+            <span id="lblUrl">Site URL</span>
+            <span class="mini" id="lblOr">or HTML file</span>
+          </div>
+          <input id="urlInput" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.com/page.html" />
+          <div style="height:10px"></div>
+          <div class="fileRow">
+            <div class="fileBtn" id="htmlPickBtn"><span id="pickHtml">Choose HTML</span>
+              <input id="htmlFile" type="file" accept=".html,.htm,text/html" />
+            </div>
+            <div class="fileName" id="htmlName"></div>
+            <button class="clearBtn" id="clearHtml" type="button" aria-label="Clear HTML">×</button>
+          </div>
+        </div>
 
-    <div>
-      <label data-i18n="key_html"></label>
-      <input id="htmlInput" type="file" accept="text/html,.html,.htm">
-    </div>
-
-    <div style="grid-column: 1 / -1;">
-      <label data-i18n="key_image"></label>
-      <input id="imgInput" type="file" accept="image/*">
-    </div>
-
-    <div style="grid-column: 1 / -1;">
-      <div class="hr"></div>
-      <label data-i18n="message"></label>
-      <textarea id="messageInput"></textarea>
-
-      <div class="row" style="margin-top:10px">
-        <button id="encryptBtn" class="btn primary" data-i18n="encrypt"></button>
-        <button id="decryptBtn" class="btn" data-i18n="decrypt"></button>
+        <div class="field">
+          <div class="label">
+            <span id="lblImg">Image key</span>
+          </div>
+          <div class="fileRow">
+            <div class="fileBtn"><span id="pickImg">Choose image</span>
+              <input id="imgFile" type="file" accept="image/*" />
+            </div>
+            <div class="fileName" id="imgName"></div>
+            <button class="clearBtn" id="clearImg" type="button" aria-label="Clear image">×</button>
+          </div>
+        </div>
       </div>
 
-      <div id="status" class="status"></div>
+      <div class="divider"></div>
+
+      <div class="field">
+        <div class="label"><span id="lblMsg">Message</span></div>
+        <textarea id="msg" placeholder=""></textarea>
+
+        <div class="actions">
+          <button class="btn primary" id="enc" type="button">Encrypt</button>
+          <button class="btn" id="dec" type="button">Decrypt</button>
+          <button class="btn" id="copy" type="button">Copy result</button>
+          <button class="btn" id="clearAll" type="button">Clear</button>
+        </div>
+
+        <div class="status" id="status"></div>
+
+        <div style="height:10px"></div>
+        <div class="label"><span id="lblOut">Result</span></div>
+        <textarea id="out" readonly placeholder=""></textarea>
+      </div>
+
+      <footer id="foot"></footer>
     </div>
   </div>
-</div>
 
 <script>
-/* ========= i18n ========= */
-const I18N = {
-  en: {
-    key_url: "Key material: Web page URL",
-    key_html: "Key material: HTML",
-    key_image: "Key material: Image",
-    message: "Message (plain text or base64 ciphertext)",
-    subtitle: "Pick URL/HTML and/or an image, type a message, then Encrypt or Decrypt.",
-    encrypt: "Encrypt",
-    decrypt: "Decrypt",
-    url_placeholder: "https://example.com",
-    placeholder: "Type here…",
-    ready: "Ready",
-    hint_key: "Add a URL, HTML, or image.",
-    hint_msg: "Enter a message.",
-    encrypting: "Encrypting…",
-    decrypting: "Decrypting…",
-    done_encrypt: "Encrypted",
-    done_decrypt: "Decrypted",
-    err_no_key: "No key material selected.",
-    err_empty_msg: "Message is empty.",
-    err_bad_format: "Invalid format.",
-    err_decrypt: "Decryption failed."
-  },
-  ja: {
-    key_url: "鍵素材：ページURL",
-    key_image: "鍵素材：画像ファイル",
-    message: "メッセージ（平文 または 暗号文 base64）",
-    subtitle: "URL/HTML/画像のいずれかを用意し、メッセージを入力して、暗号化／復号を押してください。",
-    encrypt: "暗号化",
-    decrypt: "復号",
-    url_placeholder: "https://example.com",
-    placeholder: "ここに入力…",
-    ready: "準備完了",
-    hint_key: "URL/HTML/画像のいずれかを用意してください。",
-    hint_msg: "メッセージを入力してください。",
-    encrypting: "暗号化中…",
-    decrypting: "復号中…",
-    done_encrypt: "暗号化しました",
-    done_decrypt: "復号しました",
-    err_no_key: "鍵素材がありません。",
-    err_empty_msg: "メッセージが空です。",
-    err_bad_format: "形式が不正です。",
-    err_decrypt: "復号できませんでした。"
+(() => {
+  "use strict";
+
+  const STR = {
+    en: {
+      title: "EphemeralCypher",
+      subtitle: "Pick a site URL/HTML and/or an image as the key. Encrypt or decrypt the message.",
+      url: "Site URL",
+      or: "or HTML file",
+      pickHtml: "Choose HTML",
+      img: "Image key",
+      pickImg: "Choose image",
+      msg: "Message",
+      msgPh: "Type a message to encrypt, or paste ciphertext to decrypt.",
+      out: "Result",
+      outPh: "Result appears here.",
+      enc: "Encrypt",
+      dec: "Decrypt",
+      copy: "Copy result",
+      clear: "Clear",
+      needKey: "Select a URL/HTML and/or an image.",
+      needMsg: "Enter a message.",
+      working: "Working…",
+      doneEnc: "Encrypted.",
+      doneDec: "Decrypted.",
+      badInput: "Invalid ciphertext format.",
+      fail: "Failed. (Key mismatch or content changed.)",
+      copied: "Copied.",
+      fetchFail: "Could not load the URL.",
+      foot: "Offline-ready. No server-side encryption."
+    },
+    ja: {
+      title: "エフェメラルサイファー",
+      subtitle: "URL/HTML と画像のどちらか（または両方）を鍵にして、メッセージを暗号化／復号します。",
+      url: "サイトURL",
+      or: "またはHTMLファイル",
+      pickHtml: "HTMLを選択",
+      img: "画像鍵",
+      pickImg: "画像を選択",
+      msg: "メッセージ",
+      msgPh: "暗号化したい文章を入力、または暗号文を貼り付けて復号します。",
+      out: "結果",
+      outPh: "結果がここに表示されます。",
+      enc: "暗号化",
+      dec: "復号",
+      copy: "結果をコピー",
+      clear: "クリア",
+      needKey: "URL/HTML または画像を選択してください。",
+      needMsg: "メッセージを入力してください。",
+      working: "処理中…",
+      doneEnc: "暗号化しました。",
+      doneDec: "復号しました。",
+      badInput: "暗号文の形式が不正です。",
+      fail: "失敗しました。（鍵が一致しないか、内容が変化しています）",
+      copied: "コピーしました。",
+      fetchFail: "URLの読み込みに失敗しました。",
+      foot: "オフライン対応。暗号処理は端末内で行われます。"
+    }
+  };
+
+  const $ = (id) => document.getElementById(id);
+
+  const els = {
+    title: $("title"),
+    subtitle: $("subtitle"),
+    lblUrl: $("lblUrl"),
+    lblOr: $("lblOr"),
+    pickHtml: $("pickHtml"),
+    lblImg: $("lblImg"),
+    pickImg: $("pickImg"),
+    lblMsg: $("lblMsg"),
+    lblOut: $("lblOut"),
+    msg: $("msg"),
+    out: $("out"),
+    urlInput: $("urlInput"),
+    htmlFile: $("htmlFile"),
+    imgFile: $("imgFile"),
+    htmlName: $("htmlName"),
+    imgName: $("imgName"),
+    clearHtml: $("clearHtml"),
+    clearImg: $("clearImg"),
+    enc: $("enc"),
+    dec: $("dec"),
+    copy: $("copy"),
+    clearAll: $("clearAll"),
+    status: $("status"),
+    foot: $("foot"),
+    btnJa: $("btnJa"),
+    btnEn: $("btnEn"),
+  };
+
+  let lang = (new URLSearchParams(location.search).get("lang") || "").toLowerCase();
+  const auto = navigator.language && navigator.language.toLowerCase().startsWith("ja") ? "ja" : "en";
+  if (lang !== "ja" && lang !== "en") lang = auto;
+
+  function setLang(next) {
+    lang = next;
+    const t = STR[lang];
+    els.title.textContent = t.title;
+    els.subtitle.textContent = t.subtitle;
+    els.lblUrl.textContent = t.url;
+    els.lblOr.textContent = t.or;
+    els.pickHtml.textContent = t.pickHtml;
+    els.lblImg.textContent = t.img;
+    els.pickImg.textContent = t.pickImg;
+    els.lblMsg.textContent = t.msg;
+    els.lblOut.textContent = t.out;
+    els.msg.placeholder = t.msgPh;
+    els.out.placeholder = t.outPh;
+    els.enc.textContent = t.enc;
+    els.dec.textContent = t.dec;
+    els.copy.textContent = t.copy;
+    els.clearAll.textContent = t.clear;
+    els.foot.textContent = t.foot;
+    els.btnJa.classList.toggle("active", lang === "ja");
+    els.btnEn.classList.toggle("active", lang === "en");
+    updateButtons();
   }
-};
+  els.btnJa.addEventListener("click", () => setLang("ja"));
+  els.btnEn.addEventListener("click", () => setLang("en"));
+  setLang(lang);
 
-function detectLang(){
-  const qs = new URLSearchParams(location.search);
-  const forced = (qs.get('lang')||"").toLowerCase();
-  if (forced === "ja" || forced === "en") return forced;
-  const nav = (navigator.language || "en").toLowerCase();
-  return nav.startsWith("ja") ? "ja" : "en";
-}
-const LANG = detectLang();
-function t(k){ return (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k; }
-
-document.documentElement.lang = LANG;
-document.querySelectorAll('[data-i18n]').forEach(el => {
-  el.textContent = t(el.dataset.i18n);
-});
-
-/* ========= DOM ========= */
-const enc = new TextEncoder(), dec = new TextDecoder();
-const urlInput  = document.getElementById('urlInput');
-const htmlInput = document.getElementById('htmlInput');
-const imgInput  = document.getElementById('imgInput');  = document.getElementById('imgInput');
-const msgInput  = document.getElementById('messageInput');
-const encryptBtn = document.getElementById('encryptBtn');
-const decryptBtn = document.getElementById('decryptBtn');
-const statusEl   = document.getElementById('status');
-
-msgInput.placeholder = t('placeholder');
-urlInput.placeholder = t('url_placeholder');
-
-function setStatus(text, isError=false){
-  statusEl.textContent = text || "";
-  statusEl.style.borderColor = isError ? 'rgba(255,107,107,.35)' : 'rgba(255,255,255,.12)';
-  statusEl.style.background  = isError ? 'rgba(255,107,107,.08)' : 'rgba(255,255,255,.03)';
-}
-
-/* ========= Helpers ========= */
-function concatBytes(...arrs){
-  const len = arrs.reduce((s,b)=>s+(b?b.length:0),0);
-  const out = new Uint8Array(len);
-  let off=0;
-  for (const a of arrs){
-    if (!a) continue;
-    out.set(a, off); off += a.length;
+  function setStatus(text, kind="") {
+    els.status.textContent = text || "";
+    els.status.className = "status" + (kind ? " " + kind : "");
   }
-  return out;
-}
 
-async function sha256Bytes(bytes){
-  const buf = await crypto.subtle.digest('SHA-256', bytes);
-  return new Uint8Array(buf);
-}
-
-function b64encode(u8){
-  let s = '';
-  const chunk = 0x8000;
-  for (let i=0;i<u8.length;i+=chunk){
-    s += String.fromCharCode(...u8.subarray(i,i+chunk));
+  function hasKeySelected() {
+    const hasUrl = !!els.urlInput.value.trim();
+    const hasHtml = !!(els.htmlFile.files && els.htmlFile.files[0]);
+    const hasImg = !!(els.imgFile.files && els.imgFile.files[0]);
+    return hasUrl || hasHtml || hasImg;
   }
-  return btoa(s);
-}
-function b64decode(s){
-  const bin = atob(s.replace(/\s+/g,''));
-  const out = new Uint8Array(bin.length);
-  for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
-  return out;
-}
 
-function normalizeHtmlText(html){
-  const doc = new DOMParser().parseFromString(html, 'text/html');
-  doc.querySelectorAll('script,style,noscript,template').forEach(n=>n.remove());
-  const txt = (doc.body ? doc.body.textContent : doc.textContent) || '';
-  return txt
-    .replace(/\u00A0/g,' ')
-    .replace(/[\s\r\n\t]+/g,' ')
-    .trim();
-}
-
-function readFileText(f){
-  return new Promise((res,rej)=>{
-    const r = new FileReader();
-    r.onload = ()=>res(String(r.result||""));
-    r.onerror = ()=>rej(r.error||new Error('read error'));
-    r.readAsText(f);
-  });
-}
-
-/* ========= HTML key ========= */
-function normalizeUrlInput(raw){
-  let s = (raw || '').trim();
-  if (!s) return '';
-  if (!/^https?:\/\//i.test(s)) s = 'https://' + s;
-  return s;
-}
-function isPrivateHost(host){
-  if (!host) return true;
-  host = host.toLowerCase();
-  if (host === 'localhost' || host.endsWith('.local')) return true;
-  if (/^(127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[0-1])\.)/.test(host)) return true;
-  return false;
-}
-async function fetchTextWithTimeout(url, ms=9000){
-  const ctrl = new AbortController();
-  const id = setTimeout(()=>ctrl.abort(), ms);
-  try{
-    const res = await fetch(url, {
-      signal: ctrl.signal,
-      cache: 'no-store',
-      redirect: 'follow',
-      mode: 'cors',
-      credentials: 'omit',
-    });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    return await res.text();
-  } finally {
-    clearTimeout(id);
+  function updateButtons() {
+    const t = STR[lang];
+    const keyOk = hasKeySelected();
+    const msgOk = !!els.msg.value.trim();
+    els.enc.disabled = !(keyOk && msgOk);
+    els.dec.disabled = !(keyOk && msgOk);
+    if (!keyOk) setStatus(t.needKey, "bad");
+    else if (!msgOk) setStatus(t.needMsg, "bad");
+    else setStatus("", "");
   }
-}
-async function fetchHtmlText(url){
-  try {
-    return await fetchTextWithTimeout(url, 9000);
-  } catch (e) {
-    try{
-      const u = new URL(url);
-      if (isPrivateHost(u.hostname)) throw e;
-      return await fetchTextWithTimeout('https://r.jina.ai/' + url, 9000);
-    } catch(_) {
-      throw e;
+
+  // Mutual exclusion: URL vs HTML file
+  function syncHtmlUrlLock() {
+    const hasUrl = !!els.urlInput.value.trim();
+    const hasHtml = !!(els.htmlFile.files && els.htmlFile.files[0]);
+    if (hasHtml) {
+      els.urlInput.value = "";
+      els.urlInput.disabled = true;
+    } else {
+      els.urlInput.disabled = false;
+    }
+    if (hasUrl) {
+      els.htmlFile.value = "";
+      els.htmlName.textContent = "";
     }
   }
-}
 
-async function getHtmlHash(){
-  const f = htmlInput.files && htmlInput.files[0];
-  if (f){
-    const t = await readFileText(f);
-    return await sha256Bytes(enc.encode(normalizeHtmlText(t)));
-  }
-  const url = normalizeUrlInput(urlInput.value);
-  if (!url) return null;
-  const t0 = await fetchHtmlText(url);
-  return await sha256Bytes(enc.encode(normalizeHtmlText(t0)));
-}
-
-
-/* ========= Image hash ========= */
-async function createBitmapSafe(blob){
-  try {
-    if ('createImageBitmap' in window) return await createImageBitmap(blob);
-  } catch(_) {}
-  return new Promise((resolve, reject)=>{
-    const img = new Image();
-    img.onload = ()=>resolve(img);
-    img.onerror = ()=>reject(new Error('image decode error'));
-    img.src = URL.createObjectURL(blob);
+  els.urlInput.addEventListener("input", () => {
+    syncHtmlUrlLock();
+    updateButtons();
   });
-}
 
-async function drawImageToRGBA(blob, w, h){
-  const bmp = await createBitmapSafe(blob);
-  const c = document.createElement('canvas');
-  c.width = w; c.height = h;
-  const ctx = c.getContext('2d', { willReadFrequently:true });
-  ctx.imageSmoothingEnabled = true;
-  try{ ctx.imageSmoothingQuality = 'high'; }catch(_){}
-  try{ ctx.filter = 'blur(0.6px)'; }catch(_){}
-  ctx.drawImage(bmp, 0, 0, w, h);
-  try{ ctx.filter = 'none'; }catch(_){}
-  const img = ctx.getImageData(0,0,w,h).data;
-  const out = new Uint8Array(w*h*4);
-  out.set(img);
-  try{ if (bmp.close) bmp.close(); }catch(_){}
-  return out;
-}
+  els.htmlFile.addEventListener("change", () => {
+    const f = els.htmlFile.files && els.htmlFile.files[0];
+    els.htmlName.textContent = f ? f.name : "";
+    syncHtmlUrlLock();
+    updateButtons();
+  });
 
-function rgbaToLuma(rgba){
-  const n = rgba.length/4;
-  const y = new Float32Array(n);
-  for (let i=0;i<n;i++) {
-    const r = rgba[i*4], g = rgba[i*4+1], b = rgba[i*4+2];
-    y[i] = 0.2126*r + 0.7152*g + 0.0722*b;
+  els.imgFile.addEventListener("change", () => {
+    const f = els.imgFile.files && els.imgFile.files[0];
+    els.imgName.textContent = f ? f.name : "";
+    updateButtons();
+  });
+
+  els.clearHtml.addEventListener("click", () => {
+    els.htmlFile.value = "";
+    els.htmlName.textContent = "";
+    els.urlInput.disabled = false;
+    updateButtons();
+  });
+
+  els.clearImg.addEventListener("click", () => {
+    els.imgFile.value = "";
+    els.imgName.textContent = "";
+    updateButtons();
+  });
+
+  els.msg.addEventListener("input", updateButtons);
+
+  els.clearAll.addEventListener("click", () => {
+    els.urlInput.value = "";
+    els.urlInput.disabled = false;
+    els.htmlFile.value = "";
+    els.imgFile.value = "";
+    els.htmlName.textContent = "";
+    els.imgName.textContent = "";
+    els.msg.value = "";
+    els.out.value = "";
+    updateButtons();
+  });
+
+  els.copy.addEventListener("click", async () => {
+    const t = STR[lang];
+    const txt = els.out.value || "";
+    if (!txt) return;
+    try {
+      await navigator.clipboard.writeText(txt);
+      setStatus(t.copied, "ok");
+      setTimeout(updateButtons, 900);
+    } catch (e) {
+      // fallback
+      els.out.focus(); els.out.select();
+      document.execCommand("copy");
+      setStatus(t.copied, "ok");
+      setTimeout(updateButtons, 900);
+    }
+  });
+
+  // --- crypto helpers ---
+  const te = new TextEncoder();
+  const td = new TextDecoder();
+
+  function concatU8(...arrs) {
+    const total = arrs.reduce((s,a)=>s+(a?a.length:0),0);
+    const out = new Uint8Array(total);
+    let o=0;
+    for (const a of arrs) {
+      if (!a) continue;
+      out.set(a, o); o += a.length;
+    }
+    return out;
   }
-  return y;
-}
 
-function dHashFromLuma(y, w, h){
-  const bits = [];
-  for (let row=0; row<h; row++) {
-    const off = row*w;
-    for (let col=0; col<w-1; col++) {
-      bits.push(y[off+col] > y[off+col+1] ? 1 : 0);
+  async function sha256(u8) {
+    const h = await crypto.subtle.digest("SHA-256", u8);
+    return new Uint8Array(h);
+  }
+
+  function b64enc(u8) {
+    let s = "";
+    const chunk = 0x8000;
+    for (let i=0;i<u8.length;i+=chunk) {
+      s += String.fromCharCode.apply(null, u8.subarray(i, i+chunk));
+    }
+    return btoa(s);
+  }
+
+  function b64dec(b64) {
+    const bin = atob(b64);
+    const out = new Uint8Array(bin.length);
+    for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
+
+  function stripPrefix(s) {
+    const t = s.trim();
+    if (t.startsWith("EC1:")) return t.slice(4).trim();
+    return t;
+  }
+
+  async function readTextFile(file) {
+    return await file.text();
+  }
+
+  function normalizeHTML(html) {
+    try {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      for (const sel of ["script","style","noscript"]) {
+        doc.querySelectorAll(sel).forEach(n=>n.remove());
+      }
+      const title = (doc.querySelector("title")?.textContent || "").trim();
+      const bodyText = (doc.documentElement?.textContent || "");
+      const normalized = (title + "\n" + bodyText)
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 200000); // cap for speed
+      return normalized;
+    } catch {
+      return (html || "").replace(/\s+/g, " ").trim().slice(0, 200000);
     }
   }
-  const out = new Uint8Array(Math.ceil(bits.length/8));
-  for (let i=0;i<bits.length;i++) {
-    out[i>>3] |= (bits[i] & 1) << (7-(i&7));
+
+  async function fetchTextWithTimeout(url, ms=8000) {
+    const ctrl = new AbortController();
+    const to = setTimeout(()=>ctrl.abort(), ms);
+    try {
+      const r = await fetch(url, {signal: ctrl.signal, credentials:"omit", cache:"no-store", mode:"cors"});
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return await r.text();
+    } finally {
+      clearTimeout(to);
+    }
   }
-  return out;
-}
 
-// Minimal DCT for pHash
-const _PH_N = 32;
-const _PH_K = 8;
-const _PH_ALPHA = new Float32Array(_PH_N);
-(function initAlpha(){
-  _PH_ALPHA[0] = Math.sqrt(1/_PH_N);
-  for (let k=1;k<_PH_N;k++) _PH_ALPHA[k] = Math.sqrt(2/_PH_N);
-})();
+  async function loadHTMLKeyBytes() {
+    const url = els.urlInput.value.trim();
+    const file = els.htmlFile.files && els.htmlFile.files[0];
+    if (file) {
+      const txt = await readTextFile(file);
+      return te.encode(normalizeHTML(txt));
+    }
+    if (url) {
+      try {
+        const txt = await fetchTextWithTimeout(url, 8000);
+        return te.encode(normalizeHTML(txt));
+      } catch (e) {
+        // fallback via text mirror (works for many CORS-blocked pages)
+        const mirrored = "https://r.jina.ai/http://" + url.replace(/^https?:\/\//i, "");
+        const txt = await fetchTextWithTimeout(mirrored, 9000);
+        return te.encode(normalizeHTML(txt));
+      }
+    }
+    return null;
+  }
 
-function dct2(block){
-  const N=_PH_N;
-  const out = new Float32Array(N*N);
-  const cosX = Array.from({length:N}, (_,u)=>Array.from({length:N}, (_,x)=>Math.cos(((2*x+1)*u*Math.PI)/(2*N))));
-  const cosY = Array.from({length:N}, (_,v)=>Array.from({length:N}, (_,y)=>Math.cos(((2*y+1)*v*Math.PI)/(2*N))));
-  for (let u=0;u<N;u++) {
-    for (let v=0;v<N;v++) {
-      let sum=0;
+  // --- pHash (32x32 DCT -> 8x8) ---
+  function buildCosTable(N) {
+    const table = Array.from({length:N}, () => new Float64Array(N));
+    for (let u=0;u<N;u++) {
       for (let x=0;x<N;x++) {
-        const cx = cosX[u][x];
-        const rowOff = x*N;
-        for (let y=0;y<N;y++) {
-          sum += block[rowOff+y] * cx * cosY[v][y];
+        table[u][x] = Math.cos(((2*x+1)*u*Math.PI)/(2*N));
+      }
+    }
+    return table;
+  }
+
+  const COS32 = buildCosTable(32);
+
+  function dct1d(vec, N) {
+    const out = new Float64Array(N);
+    for (let u=0;u<N;u++) {
+      let sum = 0;
+      for (let x=0;x<N;x++) sum += vec[x] * COS32[u][x];
+      const c = (u===0) ? Math.sqrt(1/N) : Math.sqrt(2/N);
+      out[u] = c * sum;
+    }
+    return out;
+  }
+
+  function dct2d(mat, N) {
+    // mat: array of Float64Array rows
+    const tmp = Array.from({length:N}, ()=>new Float64Array(N));
+    for (let y=0;y<N;y++) {
+      const row = mat[y];
+      const d = dct1d(row, N);
+      tmp[y].set(d);
+    }
+    const out = Array.from({length:N}, ()=>new Float64Array(N));
+    for (let x=0;x<N;x++) {
+      const col = new Float64Array(N);
+      for (let y=0;y<N;y++) col[y] = tmp[y][x];
+      const d = dct1d(col, N);
+      for (let y=0;y<N;y++) out[y][x] = d[y];
+    }
+    return out;
+  }
+
+  async function imageToPHashBytes(file) {
+    const blobUrl = URL.createObjectURL(file);
+    try {
+      let bmp;
+      if ("createImageBitmap" in window) {
+        bmp = await createImageBitmap(file);
+      } else {
+        const img = new Image();
+        img.decoding = "async";
+        img.src = blobUrl;
+        await new Promise((res, rej)=>{ img.onload=res; img.onerror=rej; });
+        bmp = img;
+      }
+      const c = document.createElement("canvas");
+      const N = 32;
+      c.width = N; c.height = N;
+      const ctx = c.getContext("2d", {willReadFrequently:true});
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(bmp, 0, 0, N, N);
+      const data = ctx.getImageData(0,0,N,N).data;
+      const mat = Array.from({length:N}, ()=>new Float64Array(N));
+      for (let y=0;y<N;y++) {
+        for (let x=0;x<N;x++) {
+          const i = (y*N + x)*4;
+          const r=data[i], g=data[i+1], b=data[i+2];
+          // luminance
+          mat[y][x] = 0.299*r + 0.587*g + 0.114*b;
         }
       }
-      out[u*N+v] = _PH_ALPHA[u]*_PH_ALPHA[v]*sum;
+      const dct = dct2d(mat, N);
+      const size = 8;
+      const vals = [];
+      for (let y=0;y<size;y++) {
+        for (let x=0;x<size;x++) {
+          if (x===0 && y===0) continue;
+          vals.push(dct[y][x]);
+        }
+      }
+      vals.sort((a,b)=>a-b);
+      const med = vals[Math.floor(vals.length/2)] || 0;
+      // 64 bits
+      const bytes = new Uint8Array(8);
+      let bitIndex = 0;
+      for (let y=0;y<size;y++) {
+        for (let x=0;x<size;x++) {
+          const v = dct[y][x];
+          const bit = v > med ? 1 : 0;
+          const bytePos = (bitIndex >> 3);
+          const shift = 7 - (bitIndex & 7);
+          bytes[bytePos] |= (bit << shift);
+          bitIndex++;
+        }
+      }
+      return bytes;
+    } finally {
+      URL.revokeObjectURL(blobUrl);
     }
   }
-  return out;
-}
 
-function pHashFromLuma(y){
-  const N=_PH_N;
-  const centered = new Float32Array(N*N);
-  for (let i=0;i<centered.length;i++) centered[i] = y[i] - 128.0;
-  const dct = dct2(centered);
-  const vals = [];
-  for (let u=0;u<_PH_K;u++) {
-    for (let v=0;v<_PH_K;v++) {
-      if (u===0 && v===0) continue;
-      vals.push(dct[u*N+v]);
-    }
+  async function buildKeyBytes(salt) {
+    // requires at least one key material
+    const htmlBytes = await loadHTMLKeyBytes();
+    const imgFile = els.imgFile.files && els.imgFile.files[0];
+    const imgHash = imgFile ? await imageToPHashBytes(imgFile) : null;
+
+    if (!htmlBytes && !imgHash) return null;
+
+    const domainSep = te.encode("EC|1.1.2|");
+    const htmlHash = htmlBytes ? await sha256(htmlBytes) : new Uint8Array(0);
+    const imgPart = imgHash ? imgHash : new Uint8Array(0);
+
+    const material = concatU8(domainSep, htmlHash, imgPart, salt);
+    return await sha256(material); // 32 bytes
   }
-  const sorted = vals.slice().sort((a,b)=>a-b);
-  const med = sorted[Math.floor(sorted.length/2)] || 0;
-  const bits = [];
-  for (let u=0;u<_PH_K;u++) {
-    for (let v=0;v<_PH_K;v++) {
-      if (u===0 && v===0) continue;
-      bits.push(dct[u*N+v] > med ? 1 : 0);
-    }
+
+  async function importAesKey(keyBytes) {
+    return await crypto.subtle.importKey(
+      "raw",
+      keyBytes,
+      {name:"AES-GCM", length:256},
+      false,
+      ["encrypt","decrypt"]
+    );
   }
-  const out = new Uint8Array(Math.ceil(bits.length/8));
-  for (let i=0;i<bits.length;i++) {
-    out[i>>3] |= (bits[i]&1) << (7-(i&7));
+
+  function randomBytes(n) {
+    const u = new Uint8Array(n);
+    crypto.getRandomValues(u);
+    return u;
   }
-  return out;
-}
 
-async function imageHash_PD(blob){
-  const rgba32 = await drawImageToRGBA(blob, 32, 32);
-  const y32 = rgbaToLuma(rgba32);
-  const ph = pHashFromLuma(y32);
-
-  const rgbaDH = await drawImageToRGBA(blob, 9, 8);
-  const yDH = rgbaToLuma(rgbaDH);
-  const dh = dHashFromLuma(yDH, 9, 8);
-
-  return await sha256Bytes(concatBytes(new Uint8Array([0x50,0x44]), ph, dh)); // "PD"
-}
-async function imageHash_DH_legacy(blob){
-  const rgba = await drawImageToRGBA(blob, 9, 8);
-  const y = rgbaToLuma(rgba);
-  const dh = dHashFromLuma(y, 9, 8);
-  return await sha256Bytes(concatBytes(new Uint8Array([0x44,0x48]), dh)); // "DH"
-}
-async function imageHash_RAW(blob){
-  const bytes = new Uint8Array(await blob.arrayBuffer());
-  return await sha256Bytes(concatBytes(new Uint8Array([0x52,0x41,0x57]), bytes)); // "RAW"
-}
-
-async function getImageHash(variant='PD'){
-  const f = imgInput.files[0];
-  if (!f) return null;
-  const blob = f;
-  if (variant === 'PD') return await imageHash_PD(blob);
-  if (variant === 'DH') return await imageHash_DH_legacy(blob);
-  if (variant === 'RAW') return await imageHash_RAW(blob);
-  return await imageHash_PD(blob);
-}
-
-/* ========= Key derivation ========= */
-async function buildBaseKey(imgVariant='PD'){
-  const htmlHash = await getHtmlHash();
-  const imgHash  = await getImageHash(imgVariant);
-
-  const parts = [];
-  if (htmlHash) parts.push(concatBytes(new Uint8Array([0x48]), htmlHash)); // 'H'
-  if (imgHash)  parts.push(concatBytes(new Uint8Array([0x49]), imgHash)); // 'I'
-
-  if (parts.length === 0) throw new Error(t('err_no_key'));
-
-  const joined = concatBytes(...parts);
-  const baseKey = await sha256Bytes(joined);
-  const extra = enc.encode('EC2:' + (htmlHash?'H':'') + (imgHash?'I':''));
-  return { baseKey, extra };
-}
-
-async function deriveAesKey(baseKey, saltBytes, extraBytes){
-  const total = concatBytes(baseKey, saltBytes, extraBytes);
-  const keyBytes = await sha256Bytes(total);
-  return await crypto.subtle.importKey('raw', keyBytes, {name:'AES-GCM'}, false, ['encrypt','decrypt']);
-}
-
-async function encryptAesGcm(plainBytes, key, iv) {
-  return new Uint8Array(await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, plainBytes));
-}
-async function decryptAesGcm(cipherBytes, key, iv) {
-  return new Uint8Array(await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, cipherBytes));
-}
-
-function randomBytes(n){
-  const u = new Uint8Array(n);
-  crypto.getRandomValues(u);
-  return u;
-}
-
-/* ========= UI logic ========= */
-function updateState(){
-  // Keep URL and HTML file mutually exclusive (prevents accidental mismatches).
-  const hasHtml = !!(htmlInput.files && htmlInput.files[0]);
-  if (hasHtml && urlInput.value) urlInput.value = '';
-  if (!hasHtml && urlInput.value.trim() && htmlInput.value) htmlInput.value = '';
-
-  const hasKey = !!urlInput.value.trim() || !!hasHtml || !!imgInput.files[0];
-  const hasMsg = !!msgInput.value.trim();
-  encryptBtn.disabled = !(hasKey && hasMsg);
-  decryptBtn.disabled = !(hasKey && hasMsg);
-
-  if (!hasKey) setStatus(t('hint_key'));
-  else if (!hasMsg) setStatus(t('hint_msg'));
-  else setStatus(t('ready'));
-}
-urlInput.addEventListener('input', updateState);
-htmlInput.addEventListener('change', updateState);
-imgInput.addEventListener('change', updateState);
-msgInput.addEventListener('input', updateState);
-
-encryptBtn.addEventListener('click', async ()=>{
-  try{
-    setStatus(t('encrypting'));
-    const msg = msgInput.value;
-    if (!msg.trim()) throw new Error(t('err_empty_msg'));
-    const { baseKey, extra } = await buildBaseKey('PD');
+  async function encryptMessage(plain) {
     const salt = randomBytes(16);
-    const iv   = randomBytes(12);
-    const key  = await deriveAesKey(baseKey, salt, extra);
-    const ct   = await encryptAesGcm(enc.encode(msg), key, iv);
-    const packed = concatBytes(salt, iv, ct);
-    const b64 = b64encode(packed);
-    msgInput.value = b64;
-    msgInput.focus();
-    msgInput.select();
-    setStatus(t('done_encrypt'));
-    updateState();
-  }catch(e){
-    setStatus(e && e.message ? e.message : String(e), true);
+    const iv = randomBytes(12);
+    const keyBytes = await buildKeyBytes(salt);
+    if (!keyBytes) return null;
+    const key = await importAesKey(keyBytes);
+    const pt = te.encode(plain);
+    const ctBuf = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, pt);
+    const ct = new Uint8Array(ctBuf);
+    const packed = concatU8(salt, iv, ct);
+    return "EC1:" + b64enc(packed);
   }
-});
 
-decryptBtn.addEventListener('click', async ()=>{
-  try{
-    setStatus(t('decrypting'));
-    const b64 = msgInput.value.trim();
-    if (!b64) throw new Error(t('err_empty_msg'));
+  async function decryptMessage(cipherText) {
+    const b64 = stripPrefix(cipherText);
     let packed;
-    try{ packed = b64decode(b64); }catch(_){
-      throw new Error(t('err_bad_format'));
+    try {
+      packed = b64dec(b64);
+    } catch {
+      return {ok:false, reason:"bad"};
     }
-    if (packed.length < 16+12+1) throw new Error(t('err_bad_format'));
-    const salt = packed.subarray(0,16);
-    const iv   = packed.subarray(16,28);
-    const ct   = packed.subarray(28);
-
-    const variants = ['PD','DH','RAW'];
-    for (const v of variants){
-      try{
-        const { baseKey, extra } = await buildBaseKey(v);
-        const key = await deriveAesKey(baseKey, salt, extra);
-        const pt  = await decryptAesGcm(ct, key, iv);
-        const text = dec.decode(pt);
-        msgInput.value = text;
-        msgInput.focus();
-        msgInput.select();
-        setStatus(t('done_decrypt'));
-        updateState();
-        return;
-      }catch(_){}
+    if (packed.length < (16+12+16)) return {ok:false, reason:"bad"};
+    const salt = packed.slice(0,16);
+    const iv = packed.slice(16,28);
+    const ct = packed.slice(28);
+    const keyBytes = await buildKeyBytes(salt);
+    if (!keyBytes) return {ok:false, reason:"bad"};
+    const key = await importAesKey(keyBytes);
+    try {
+      const ptBuf = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, ct);
+      return {ok:true, text: td.decode(new Uint8Array(ptBuf))};
+    } catch {
+      return {ok:false, reason:"fail"};
     }
-    throw new Error(t('err_decrypt'));
-  }catch(e){
-    setStatus(e && e.message ? e.message : String(e), true);
   }
-});
 
-updateState();
+  async function runEncrypt() {
+    const t = STR[lang];
+    setStatus(t.working, "");
+    try {
+      const msg = els.msg.value.trim();
+      const out = await encryptMessage(msg);
+      if (!out) {
+        setStatus(t.needKey, "bad");
+        return;
+      }
+      els.out.value = out;
+      setStatus(t.doneEnc, "ok");
+    } catch (e) {
+      console.error(e);
+      setStatus(t.fail, "bad");
+    } finally {
+      setTimeout(updateButtons, 800);
+    }
+  }
 
-/* ========= SW ========= */
-if ('serviceWorker' in navigator){
-  navigator.serviceWorker.register('./sw.js?v=1.1.1', { scope:'./', updateViaCache:'none' })
-    .catch(()=>{});
-  navigator.serviceWorker.addEventListener('controllerchange', ()=>{
-    if (window.__ec_reloaded) return;
-    window.__ec_reloaded = true;
-    location.reload();
-  });
-}
+  async function runDecrypt() {
+    const t = STR[lang];
+    setStatus(t.working, "");
+    try {
+      const msg = els.msg.value.trim();
+      const res = await decryptMessage(msg);
+      if (!res.ok) {
+        setStatus(res.reason==="bad" ? t.badInput : t.fail, "bad");
+        return;
+      }
+      els.out.value = res.text;
+      setStatus(t.doneDec, "ok");
+    } catch (e) {
+      console.error(e);
+      setStatus(t.fail, "bad");
+    } finally {
+      setTimeout(updateButtons, 800);
+    }
+  }
+
+  els.enc.addEventListener("click", runEncrypt);
+  els.dec.addEventListener("click", runDecrypt);
+
+  // Try to avoid "stuck old UI": SW + one-shot reload on controller change
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", async () => {
+      try {
+        const reg = await navigator.serviceWorker.register("./sw.js?v=112", {updateViaCache:"none"});
+        reg.update?.();
+        let reloaded = false;
+        navigator.serviceWorker.addEventListener("controllerchange", () => {
+          if (reloaded) return;
+          reloaded = true;
+          location.reload();
+        });
+      } catch (e) {
+        // ignore
+      }
+    });
+  }
+
+})();
 </script>
 </body>
 </html>
