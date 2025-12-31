@@ -1,5 +1,5 @@
-// sw.js (v1.0.2) — cache bump for security fix
-const CACHE = 'ephemeralcypher-v1.0.2';
+// sw.js (v1.1.0) — cache bump for simplified UI
+const CACHE = 'ephemeralcypher-v1.1.0';
 const ASSETS = [
   './',
   './index.html',
