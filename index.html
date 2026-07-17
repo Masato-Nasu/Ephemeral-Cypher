@@ -1,880 +1,921 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#0b0b10" />
-  <link rel="manifest" href="./manifest.json?v=112">
-  <link rel="icon" href="./icon-192.png">
-  <title>EphemeralCypher</title>
-  <style>
-    :root {
-      --bg0:#07070b;
-      --bg1:#0b0b10;
-      --card:#11111a;
-      --card2:#141421;
-      --text:#f2f2f5;
-      --muted:#a9a9b6;
-      --line:rgba(255,255,255,.10);
-      --focus:rgba(160,160,255,.28);
-      --shadow: 0 18px 60px rgba(0,0,0,.55);
-      --r:18px;
-    }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      color:var(--text);
-      font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo", Arial, sans-serif;
-      background: var(--bg1);
-    }
-    .wrap{
-      max-width: 980px;
-      margin: 0 auto;
-      padding: 34px 18px 38px;
-    }
-    header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom: 14px;
-    }
-    .brand{
-      display:flex; align-items:center; gap:12px;
-      min-width:0;
-    }
-    .dot{
-      width:34px;height:34px;border-radius:12px;
-      background: rgba(255,255,255,.10);
-      border:1px solid rgba(255,255,255,.10);
-      box-shadow: 0 10px 28px rgba(0,0,0,.35);
-    }
-    h1{
-      font-size:20px;
-      font-weight:650;
-      letter-spacing:.2px;
-      margin:0;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .sub{
-      margin: 6px 0 0;
-      font-size: 13px;
-      color: var(--muted);
-      line-height: 1.5;
-    }
-    .lang{
-      display:flex; align-items:center; gap:6px;
-      padding:6px;
-      background: rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius: 999px;
-      user-select:none;
-    }
-    .lang button{
-      appearance:none;
-      border:0;
-      background:transparent;
-      color:var(--muted);
-      font-size:12px;
-      padding:6px 10px;
-      border-radius:999px;
-      cursor:pointer;
-    }
-    .lang button.active{
-      color:var(--text);
-      background: rgba(255,255,255,.10);
-    }
-
-    .card{
-      background: rgba(255,255,255,.05);
-      border: 1px solid rgba(255,255,255,.10);
-      border-radius: 24px;
-      box-shadow: var(--shadow);
-      padding: 18px;
-      overflow:hidden;
-    }
-
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 14px;
-      margin-top: 14px;
-    }
-    @media (max-width: 820px) {
-      .grid{grid-template-columns:1fr}
-    }
-
-    .field{
-      background: rgba(0,0,0,.16);
-      border:1px solid rgba(255,255,255,.10);
-      border-radius: var(--r);
-      padding: 12px;
-    }
-    .label{
-      font-size:12px;
-      color: var(--muted);
-      margin: 0 0 8px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-    .label .mini{
-      font-size:11px;
-      color: rgba(255,255,255,.50);
-    }
-    input[type="url"], textarea{
-      width:100%;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,.12);
-      background: rgba(255,255,255,.06);
-      color: var(--text);
-      padding: 12px 12px;
-      outline: none;
-      font-size: 14px;
-    }
-    input[type="url"]::placeholder, textarea::placeholder{
-      color: rgba(255,255,255,.40);
-    }
-    input[type="url"]:focus, textarea:focus{
-      border-color: rgba(170,170,255,.35);
-      box-shadow: 0 0 0 4px var(--focus);
-    }
-    textarea{
-      min-height: 170px;
-      resize: vertical;
-      line-height:1.5;
-    }
-
-    .fileRow{
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-    .fileBtn{
-      position:relative;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      border-radius: 14px;
-      padding: 10px 12px;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.08);
-      color: var(--text);
-      cursor:pointer;
-      white-space:nowrap;
-      font-size: 13px;
-      flex:0 0 auto;
-    }
-    .fileBtn:hover{background: rgba(255,255,255,.10)}
-    .fileBtn input{
-      position:absolute;
-      inset:0;
-      opacity:0;
-      cursor:pointer;
-      width:100%;
-      height:100%;
-    }
-    .fileName{
-      flex:1 1 auto;
-      min-width:0;
-      font-size: 13px;
-      color: rgba(255,255,255,.75);
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
-    .clearBtn{
-      appearance:none;
-      border:1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.06);
-      color: rgba(255,255,255,.85);
-      border-radius: 12px;
-      padding: 9px 10px;
-      cursor:pointer;
-      font-size: 13px;
-      line-height: 1;
-      flex:0 0 auto;
-    }
-    .clearBtn:hover{background: rgba(255,255,255,.10)}
-
-    .divider{
-      height:1px;
-      background: rgba(255,255,255,.08);
-      margin: 14px 0;
-    }
-
-    .actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top: 12px;
-    }
-    .btn{
-      appearance:none;
-      border: 1px solid rgba(255,255,255,.14);
-      background: rgba(255,255,255,.08);
-      color: var(--text);
-      border-radius: 16px;
-      padding: 12px 14px;
-      cursor:pointer;
-      font-size: 14px;
-      font-weight: 600;
-      letter-spacing:.2px;
-    }
-    .btn:hover{background: rgba(255,255,255,.10)}
-    .btn.primary{
-      background: rgba(160,160,255,.18);
-      border-color: rgba(160,160,255,.28);
-    }
-    .btn:disabled{
-      opacity:.45;
-      cursor:not-allowed;
-    }
-
-    .status{
-      margin-top: 10px;
-      font-size: 12px;
-      color: rgba(255,255,255,.72);
-      min-height: 18px;
-    }
-    .status.bad{color: rgba(255,170,170,.95)}
-    .status.ok{color: rgba(180,255,210,.95)}
-
-    footer{
-      margin-top: 14px;
-      font-size: 11px;
-      color: rgba(255,255,255,.35);
-    }
-    a{color:inherit}
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="theme-color" content="#0b0b10" />
+<link rel="manifest" href="./manifest.json?v=113">
+<link rel="icon" href="./icon-192.png">
+<title>EphemeralCypher</title>
+<style>
+:root {
+--bg0:#07070b;
+--bg1:#0b0b10;
+--card:#11111a;
+--card2:#141421;
+--text:#f2f2f5;
+--muted:#a9a9b6;
+--line:rgba(255,255,255,.10);
+--focus:rgba(160,160,255,.28);
+--shadow: 0 18px 60px rgba(0,0,0,.55);
+--r:18px;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+margin:0;
+color:var(--text);
+font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo", Arial, sans-serif;
+background: var(--bg1);
+}
+.wrap{
+max-width: 980px;
+margin: 0 auto;
+padding: 34px 18px 38px;
+}
+header{
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:12px;
+margin-bottom: 14px;
+}
+.brand{
+display:flex; align-items:center; gap:12px;
+min-width:0;
+}
+.dot{
+width:34px;height:34px;border-radius:12px;
+background: rgba(255,255,255,.10);
+border:1px solid rgba(255,255,255,.10);
+box-shadow: 0 10px 28px rgba(0,0,0,.35);
+}
+h1{
+font-size:20px;
+font-weight:650;
+letter-spacing:.2px;
+margin:0;
+white-space:nowrap;
+overflow:hidden;
+text-overflow:ellipsis;
+}
+.sub{
+margin: 6px 0 0;
+font-size: 13px;
+color: var(--muted);
+line-height: 1.5;
+}
+.lang{
+display:flex; align-items:center; gap:6px;
+padding:6px;
+background: rgba(255,255,255,.06);
+border:1px solid rgba(255,255,255,.10);
+border-radius: 999px;
+user-select:none;
+}
+.lang button{
+appearance:none;
+border:0;
+background:transparent;
+color:var(--muted);
+font-size:12px;
+padding:6px 10px;
+border-radius:999px;
+cursor:pointer;
+}
+.lang button.active{
+color:var(--text);
+background: rgba(255,255,255,.10);
+}
+.card{
+background: rgba(255,255,255,.05);
+border: 1px solid rgba(255,255,255,.10);
+border-radius: 24px;
+box-shadow: var(--shadow);
+padding: 18px;
+overflow:hidden;
+}
+.grid{
+display:grid;
+grid-template-columns: 1fr 1fr;
+gap: 14px;
+margin-top: 14px;
+}
+@media (max-width: 820px) {
+.grid{grid-template-columns:1fr}
+}
+.field{
+background: rgba(0,0,0,.16);
+border:1px solid rgba(255,255,255,.10);
+border-radius: var(--r);
+padding: 12px;
+}
+.label{
+font-size:12px;
+color: var(--muted);
+margin: 0 0 8px;
+display:flex;
+align-items:center;
+justify-content:space-between;
+gap:10px;
+}
+.label .mini{
+font-size:11px;
+color: rgba(255,255,255,.50);
+}
+input[type="url"], textarea{
+width:100%;
+border-radius: 14px;
+border: 1px solid rgba(255,255,255,.12);
+background: rgba(255,255,255,.06);
+color: var(--text);
+padding: 12px 12px;
+outline: none;
+font-size: 14px;
+}
+input[type="url"]::placeholder, textarea::placeholder{
+color: rgba(255,255,255,.40);
+}
+input[type="url"]:focus, textarea:focus{
+border-color: rgba(170,170,255,.35);
+box-shadow: 0 0 0 4px var(--focus);
+}
+textarea{
+min-height: 170px;
+resize: vertical;
+line-height:1.5;
+}
+textarea.small{
+min-height: 90px;
+}
+.fileRow{
+display:flex;
+align-items:center;
+gap:10px;
+}
+.fileBtn{
+position:relative;
+display:inline-flex;
+align-items:center;
+justify-content:center;
+border-radius: 14px;
+padding: 10px 12px;
+border: 1px solid rgba(255,255,255,.14);
+background: rgba(255,255,255,.08);
+color: var(--text);
+cursor:pointer;
+white-space:nowrap;
+font-size: 13px;
+flex:0 0 auto;
+}
+.fileBtn:hover{background: rgba(255,255,255,.10)}
+.fileBtn input{
+position:absolute;
+inset:0;
+opacity:0;
+cursor:pointer;
+width:100%;
+height:100%;
+}
+.fileName{
+flex:1 1 auto;
+min-width:0;
+font-size: 13px;
+color: rgba(255,255,255,.75);
+overflow:hidden;
+text-overflow:ellipsis;
+white-space:nowrap;
+}
+.clearBtn{
+appearance:none;
+border:1px solid rgba(255,255,255,.14);
+background: rgba(255,255,255,.06);
+color: rgba(255,255,255,.85);
+border-radius: 12px;
+padding: 9px 10px;
+cursor:pointer;
+font-size: 13px;
+line-height: 1;
+flex:0 0 auto;
+}
+.clearBtn:hover{background: rgba(255,255,255,.10)}
+.divider{
+height:1px;
+background: rgba(255,255,255,.08);
+margin: 14px 0;
+}
+.actions{
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+margin-top: 12px;
+}
+.btn{
+appearance:none;
+border: 1px solid rgba(255,255,255,.14);
+background: rgba(255,255,255,.08);
+color: var(--text);
+border-radius: 16px;
+padding: 12px 14px;
+cursor:pointer;
+font-size: 14px;
+font-weight: 600;
+letter-spacing:.2px;
+}
+.btn:hover{background: rgba(255,255,255,.10)}
+.btn.primary{
+background: rgba(160,160,255,.18);
+border-color: rgba(160,160,255,.28);
+}
+.btn:disabled{
+opacity:.45;
+cursor:not-allowed;
+}
+.status{
+margin-top: 10px;
+font-size: 12px;
+color: rgba(255,255,255,.72);
+min-height: 18px;
+}
+.status.bad{color: rgba(255,170,170,.95)}
+.status.ok{color: rgba(180,255,210,.95)}
+footer{
+margin-top: 14px;
+font-size: 11px;
+color: rgba(255,255,255,.35);
+}
+a{color:inherit}
+</style>
 </head>
 <body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
-        <div class="dot" aria-hidden="true"></div>
-        <div style="min-width:0">
-          <h1 id="title">EphemeralCypher</h1>
-          <div class="sub" id="subtitle"></div>
-        </div>
-      </div>
-      <div class="lang" aria-label="Language">
-        <button id="btnJa" type="button">日本語</button>
-        <button id="btnEn" type="button">EN</button>
-      </div>
-    </header>
+<div class="wrap">
+<header>
+<div class="brand">
+<div class="dot" aria-hidden="true"></div>
+<div style="min-width:0">
+<h1 id="title">EphemeralCypher</h1>
+<div class="sub" id="subtitle"></div>
+</div>
+</div>
+<div class="lang" aria-label="Language">
+<button id="btnJa" type="button">日本語</button>
+<button id="btnEn" type="button">EN</button>
+</div>
+</header>
 
-    <div class="card">
-      <div class="grid">
-        <div class="field" id="htmlField">
-          <div class="label">
-            <span id="lblUrl">Site URL</span>
-            <span class="mini" id="lblOr">or HTML file</span>
-          </div>
-          <input id="urlInput" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.com/page.html" />
-          <div style="height:10px"></div>
-          <div class="fileRow">
-            <div class="fileBtn" id="htmlPickBtn"><span id="pickHtml">Choose HTML</span>
-              <input id="htmlFile" type="file" accept=".html,.htm,text/html" />
-            </div>
-            <div class="fileName" id="htmlName"></div>
-            <button class="clearBtn" id="clearHtml" type="button" aria-label="Clear HTML">×</button>
-          </div>
-        </div>
+<div class="card">
+<div class="grid">
+<div class="field" id="htmlField">
+<div class="label">
+<span id="lblUrl">Site URL</span>
+<span class="mini" id="lblOr">or HTML file</span>
+</div>
+<input id="urlInput" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.com/page.html" />
+<div style="height:10px"></div>
+<div class="fileRow">
+<div class="fileBtn" id="htmlPickBtn"><span id="pickHtml">Choose HTML</span>
+<input id="htmlFile" type="file" accept=".html,.htm,text/html" />
+</div>
+<div class="fileName" id="htmlName"></div>
+<button class="clearBtn" id="clearHtml" type="button" aria-label="Clear HTML">×</button>
+</div>
+</div>
 
-        <div class="field">
-          <div class="label">
-            <span id="lblImg">Image key</span>
-          </div>
-          <div class="fileRow">
-            <div class="fileBtn"><span id="pickImg">Choose image</span>
-              <input id="imgFile" type="file" accept="image/*" />
-            </div>
-            <div class="fileName" id="imgName"></div>
-            <button class="clearBtn" id="clearImg" type="button" aria-label="Clear image">×</button>
-          </div>
-        </div>
-      </div>
+<div class="field">
+<div class="label">
+<span id="lblImg">Image key</span>
+</div>
+<div class="fileRow">
+<div class="fileBtn"><span id="pickImg">Choose image</span>
+<input id="imgFile" type="file" accept="image/*" />
+</div>
+<div class="fileName" id="imgName"></div>
+<button class="clearBtn" id="clearImg" type="button" aria-label="Clear image">×</button>
+</div>
+</div>
+</div>
 
-      <div class="divider"></div>
+<div class="field" style="margin-top:14px">
+<div class="label">
+<span id="lblPassage">Passage key</span>
+<span class="mini" id="lblPassageMini">optional</span>
+</div>
+<textarea id="passage" class="small" spellcheck="false"></textarea>
+</div>
 
-      <div class="field">
-        <div class="label"><span id="lblMsg">Message</span></div>
-        <textarea id="msg" placeholder=""></textarea>
+<div class="divider"></div>
 
-        <div class="actions">
-          <button class="btn primary" id="enc" type="button">Encrypt</button>
-          <button class="btn" id="dec" type="button">Decrypt</button>
-          <button class="btn" id="copy" type="button">Copy result</button>
-          <button class="btn" id="clearAll" type="button">Clear</button>
-        </div>
+<div class="field">
+<div class="label"><span id="lblMsg">Message</span></div>
+<textarea id="msg" placeholder=""></textarea>
+<div class="actions">
+<button class="btn primary" id="enc" type="button">Encrypt</button>
+<button class="btn" id="dec" type="button">Decrypt</button>
+<button class="btn" id="copy" type="button">Copy result</button>
+<button class="btn" id="clearAll" type="button">Clear</button>
+</div>
+<div class="status" id="status"></div>
+<div style="height:10px"></div>
+<div class="label"><span id="lblOut">Result</span></div>
+<textarea id="out" readonly placeholder=""></textarea>
+</div>
 
-        <div class="status" id="status"></div>
-
-        <div style="height:10px"></div>
-        <div class="label"><span id="lblOut">Result</span></div>
-        <textarea id="out" readonly placeholder=""></textarea>
-      </div>
-
-      <footer id="foot"></footer>
-    </div>
-  </div>
+<footer id="foot"></footer>
+</div>
+</div>
 
 <script>
 (() => {
-  "use strict";
+"use strict";
 
-  const STR = {
-    en: {
-      title: "EphemeralCypher",
-      subtitle: "Pick a site URL/HTML and/or an image as the key. Encrypt or decrypt the message.",
-      url: "Site URL",
-      or: "or HTML file",
-      pickHtml: "Choose HTML",
-      img: "Image key",
-      pickImg: "Choose image",
-      msg: "Message",
-      msgPh: "Type a message to encrypt, or paste ciphertext to decrypt.",
-      out: "Result",
-      outPh: "Result appears here.",
-      enc: "Encrypt",
-      dec: "Decrypt",
-      copy: "Copy result",
-      clear: "Clear",
-      needKey: "Select a URL/HTML and/or an image.",
-      needMsg: "Enter a message.",
-      working: "Working…",
-      doneEnc: "Encrypted.",
-      doneDec: "Decrypted.",
-      badInput: "Invalid ciphertext format.",
-      fail: "Failed. (Key mismatch or content changed.)",
-      copied: "Copied.",
-      fetchFail: "Could not load the URL.",
-      foot: "Offline-ready. No server-side encryption."
-    },
-    ja: {
-      title: "エフェメラルサイファー",
-      subtitle: "URL/HTML と画像のどちらか（または両方）を鍵にして、メッセージを暗号化／復号します。",
-      url: "サイトURL",
-      or: "またはHTMLファイル",
-      pickHtml: "HTMLを選択",
-      img: "画像鍵",
-      pickImg: "画像を選択",
-      msg: "メッセージ",
-      msgPh: "暗号化したい文章を入力、または暗号文を貼り付けて復号します。",
-      out: "結果",
-      outPh: "結果がここに表示されます。",
-      enc: "暗号化",
-      dec: "復号",
-      copy: "結果をコピー",
-      clear: "クリア",
-      needKey: "URL/HTML または画像を選択してください。",
-      needMsg: "メッセージを入力してください。",
-      working: "処理中…",
-      doneEnc: "暗号化しました。",
-      doneDec: "復号しました。",
-      badInput: "暗号文の形式が不正です。",
-      fail: "失敗しました。（鍵が一致しないか、内容が変化しています）",
-      copied: "コピーしました。",
-      fetchFail: "URLの読み込みに失敗しました。",
-      foot: "オフライン対応。暗号処理は端末内で行われます。"
-    }
-  };
+const STR = {
+en: {
+title: "EphemeralCypher",
+subtitle: "Point at key material — a page, a passage, an image. Only those who can point at the same material can decrypt.",
+url: "Site URL",
+or: "or HTML file",
+pickHtml: "Choose HTML",
+img: "Image key",
+pickImg: "Choose image",
+passage: "Passage key",
+passageMini: "optional — paste any passage instead of a whole page",
+passagePh: "Paste a passage to use as (part of) the key. Whitespace variation is ignored.",
+msg: "Message",
+msgPh: "Type a message to encrypt, or paste ciphertext to decrypt.",
+out: "Result",
+outPh: "Result appears here.",
+enc: "Encrypt",
+dec: "Decrypt",
+copy: "Copy result",
+clear: "Clear",
+needKey: "Provide at least one key material: URL/HTML, passage, or image.",
+needMsg: "Enter a message.",
+working: "Working…",
+doneEnc: "GOOD — Encrypted.",
+doneDec: "GOOD — Decrypted.",
+badInput: "Invalid ciphertext format.",
+fail: "OOPS — The pointing did not resolve. (Material changed, or a different material was pointed at.)",
+copied: "Copied.",
+unreachable: "UNREACHABLE — Could not load the URL. Save the page as an HTML file and attach it. Nothing is sent to any third party.",
+foot: "All processing stays in this browser. No relay, no server, no storage."
+},
+ja: {
+title: "エフェメラルサイファー",
+subtitle: "頁・一節・画像——素材を指す。同じ素材を指せる者だけが復号できます。",
+url: "サイトURL",
+or: "またはHTMLファイル",
+pickHtml: "HTMLを選択",
+img: "画像鍵",
+pickImg: "画像を選択",
+passage: "一節鍵",
+passageMini: "任意 — 頁全体でなく一節を指す",
+passagePh: "鍵(の一部)にする一節を貼り付けます。空白・改行の揺れは無視されます。",
+msg: "メッセージ",
+msgPh: "暗号化したい文章を入力、または暗号文を貼り付けて復号します。",
+out: "結果",
+outPh: "結果がここに表示されます。",
+enc: "暗号化",
+dec: "復号",
+copy: "結果をコピー",
+clear: "クリア",
+needKey: "鍵素材を最低1つ:URL/HTML、一節、または画像。",
+needMsg: "メッセージを入力してください。",
+working: "処理中…",
+doneEnc: "GOOD — 暗号化しました。",
+doneDec: "GOOD — 復号しました。",
+badInput: "暗号文の形式が不正です。",
+fail: "OOPS — 指しは解決しませんでした。(素材が変化したか、指し先が違います)",
+copied: "コピーしました。",
+unreachable: "不達 — URLを取得できません。頁をHTML保存して添付してください。第三者には何も送信されません。",
+foot: "全ての処理は端末内で完結します。中継なし・サーバーなし・保存なし。"
+}
+};
 
-  const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
+const els = {
+title: $("title"),
+subtitle: $("subtitle"),
+lblUrl: $("lblUrl"),
+lblOr: $("lblOr"),
+pickHtml: $("pickHtml"),
+lblImg: $("lblImg"),
+pickImg: $("pickImg"),
+lblPassage: $("lblPassage"),
+lblPassageMini: $("lblPassageMini"),
+passage: $("passage"),
+lblMsg: $("lblMsg"),
+lblOut: $("lblOut"),
+msg: $("msg"),
+out: $("out"),
+urlInput: $("urlInput"),
+htmlFile: $("htmlFile"),
+imgFile: $("imgFile"),
+htmlName: $("htmlName"),
+imgName: $("imgName"),
+clearHtml: $("clearHtml"),
+clearImg: $("clearImg"),
+enc: $("enc"),
+dec: $("dec"),
+copy: $("copy"),
+clearAll: $("clearAll"),
+status: $("status"),
+foot: $("foot"),
+btnJa: $("btnJa"),
+btnEn: $("btnEn"),
+};
 
-  const els = {
-    title: $("title"),
-    subtitle: $("subtitle"),
-    lblUrl: $("lblUrl"),
-    lblOr: $("lblOr"),
-    pickHtml: $("pickHtml"),
-    lblImg: $("lblImg"),
-    pickImg: $("pickImg"),
-    lblMsg: $("lblMsg"),
-    lblOut: $("lblOut"),
-    msg: $("msg"),
-    out: $("out"),
-    urlInput: $("urlInput"),
-    htmlFile: $("htmlFile"),
-    imgFile: $("imgFile"),
-    htmlName: $("htmlName"),
-    imgName: $("imgName"),
-    clearHtml: $("clearHtml"),
-    clearImg: $("clearImg"),
-    enc: $("enc"),
-    dec: $("dec"),
-    copy: $("copy"),
-    clearAll: $("clearAll"),
-    status: $("status"),
-    foot: $("foot"),
-    btnJa: $("btnJa"),
-    btnEn: $("btnEn"),
-  };
+let lang = (new URLSearchParams(location.search).get("lang") || "").toLowerCase();
+const auto = navigator.language && navigator.language.toLowerCase().startsWith("ja") ? "ja" : "en";
+if (lang !== "ja" && lang !== "en") lang = auto;
 
-  let lang = (new URLSearchParams(location.search).get("lang") || "").toLowerCase();
-  const auto = navigator.language && navigator.language.toLowerCase().startsWith("ja") ? "ja" : "en";
-  if (lang !== "ja" && lang !== "en") lang = auto;
+function setLang(next) {
+lang = next;
+const t = STR[lang];
+els.title.textContent = t.title;
+els.subtitle.textContent = t.subtitle;
+els.lblUrl.textContent = t.url;
+els.lblOr.textContent = t.or;
+els.pickHtml.textContent = t.pickHtml;
+els.lblImg.textContent = t.img;
+els.pickImg.textContent = t.pickImg;
+els.lblPassage.textContent = t.passage;
+els.lblPassageMini.textContent = t.passageMini;
+els.passage.placeholder = t.passagePh;
+els.lblMsg.textContent = t.msg;
+els.lblOut.textContent = t.out;
+els.msg.placeholder = t.msgPh;
+els.out.placeholder = t.outPh;
+els.enc.textContent = t.enc;
+els.dec.textContent = t.dec;
+els.copy.textContent = t.copy;
+els.clearAll.textContent = t.clear;
+els.foot.textContent = t.foot;
+els.btnJa.classList.toggle("active", lang === "ja");
+els.btnEn.classList.toggle("active", lang === "en");
+updateButtons();
+}
+els.btnJa.addEventListener("click", () => setLang("ja"));
+els.btnEn.addEventListener("click", () => setLang("en"));
 
-  function setLang(next) {
-    lang = next;
-    const t = STR[lang];
-    els.title.textContent = t.title;
-    els.subtitle.textContent = t.subtitle;
-    els.lblUrl.textContent = t.url;
-    els.lblOr.textContent = t.or;
-    els.pickHtml.textContent = t.pickHtml;
-    els.lblImg.textContent = t.img;
-    els.pickImg.textContent = t.pickImg;
-    els.lblMsg.textContent = t.msg;
-    els.lblOut.textContent = t.out;
-    els.msg.placeholder = t.msgPh;
-    els.out.placeholder = t.outPh;
-    els.enc.textContent = t.enc;
-    els.dec.textContent = t.dec;
-    els.copy.textContent = t.copy;
-    els.clearAll.textContent = t.clear;
-    els.foot.textContent = t.foot;
-    els.btnJa.classList.toggle("active", lang === "ja");
-    els.btnEn.classList.toggle("active", lang === "en");
-    updateButtons();
-  }
-  els.btnJa.addEventListener("click", () => setLang("ja"));
-  els.btnEn.addEventListener("click", () => setLang("en"));
-  setLang(lang);
+function setStatus(text, kind="") {
+els.status.textContent = text || "";
+els.status.className = "status" + (kind ? " " + kind : "");
+}
 
-  function setStatus(text, kind="") {
-    els.status.textContent = text || "";
-    els.status.className = "status" + (kind ? " " + kind : "");
-  }
+function hasKeySelected() {
+const hasUrl = !!els.urlInput.value.trim();
+const hasHtml = !!(els.htmlFile.files && els.htmlFile.files[0]);
+const hasImg = !!(els.imgFile.files && els.imgFile.files[0]);
+const hasPassage = !!els.passage.value.trim();
+return hasUrl || hasHtml || hasImg || hasPassage;
+}
 
-  function hasKeySelected() {
-    const hasUrl = !!els.urlInput.value.trim();
-    const hasHtml = !!(els.htmlFile.files && els.htmlFile.files[0]);
-    const hasImg = !!(els.imgFile.files && els.imgFile.files[0]);
-    return hasUrl || hasHtml || hasImg;
-  }
+function updateButtons() {
+const t = STR[lang];
+const keyOk = hasKeySelected();
+const msgOk = !!els.msg.value.trim();
+els.enc.disabled = !(keyOk && msgOk);
+els.dec.disabled = !(keyOk && msgOk);
+if (!keyOk) setStatus(t.needKey, "bad");
+else if (!msgOk) setStatus(t.needMsg, "bad");
+else setStatus("", "");
+}
 
-  function updateButtons() {
-    const t = STR[lang];
-    const keyOk = hasKeySelected();
-    const msgOk = !!els.msg.value.trim();
-    els.enc.disabled = !(keyOk && msgOk);
-    els.dec.disabled = !(keyOk && msgOk);
-    if (!keyOk) setStatus(t.needKey, "bad");
-    else if (!msgOk) setStatus(t.needMsg, "bad");
-    else setStatus("", "");
-  }
+// Mutual exclusion: URL vs HTML file
+function syncHtmlUrlLock() {
+const hasUrl = !!els.urlInput.value.trim();
+const hasHtml = !!(els.htmlFile.files && els.htmlFile.files[0]);
+if (hasHtml) {
+els.urlInput.value = "";
+els.urlInput.disabled = true;
+} else {
+els.urlInput.disabled = false;
+}
+if (hasUrl) {
+els.htmlFile.value = "";
+els.htmlName.textContent = "";
+}
+}
 
-  // Mutual exclusion: URL vs HTML file
-  function syncHtmlUrlLock() {
-    const hasUrl = !!els.urlInput.value.trim();
-    const hasHtml = !!(els.htmlFile.files && els.htmlFile.files[0]);
-    if (hasHtml) {
-      els.urlInput.value = "";
-      els.urlInput.disabled = true;
-    } else {
-      els.urlInput.disabled = false;
-    }
-    if (hasUrl) {
-      els.htmlFile.value = "";
-      els.htmlName.textContent = "";
-    }
-  }
+els.urlInput.addEventListener("input", () => {
+syncHtmlUrlLock();
+updateButtons();
+});
+els.htmlFile.addEventListener("change", () => {
+const f = els.htmlFile.files && els.htmlFile.files[0];
+els.htmlName.textContent = f ? f.name : "";
+syncHtmlUrlLock();
+updateButtons();
+});
+els.imgFile.addEventListener("change", () => {
+const f = els.imgFile.files && els.imgFile.files[0];
+els.imgName.textContent = f ? f.name : "";
+updateButtons();
+});
+els.clearHtml.addEventListener("click", () => {
+els.htmlFile.value = "";
+els.htmlName.textContent = "";
+els.urlInput.disabled = false;
+updateButtons();
+});
+els.clearImg.addEventListener("click", () => {
+els.imgFile.value = "";
+els.imgName.textContent = "";
+updateButtons();
+});
+els.msg.addEventListener("input", updateButtons);
+els.passage.addEventListener("input", updateButtons);
 
-  els.urlInput.addEventListener("input", () => {
-    syncHtmlUrlLock();
-    updateButtons();
-  });
+els.clearAll.addEventListener("click", () => {
+els.urlInput.value = "";
+els.urlInput.disabled = false;
+els.htmlFile.value = "";
+els.imgFile.value = "";
+els.htmlName.textContent = "";
+els.imgName.textContent = "";
+els.passage.value = "";
+els.msg.value = "";
+els.out.value = "";
+updateButtons();
+});
 
-  els.htmlFile.addEventListener("change", () => {
-    const f = els.htmlFile.files && els.htmlFile.files[0];
-    els.htmlName.textContent = f ? f.name : "";
-    syncHtmlUrlLock();
-    updateButtons();
-  });
+els.copy.addEventListener("click", async () => {
+const t = STR[lang];
+const txt = els.out.value || "";
+if (!txt) return;
+try {
+await navigator.clipboard.writeText(txt);
+setStatus(t.copied, "ok");
+setTimeout(updateButtons, 900);
+} catch (e) {
+els.out.focus(); els.out.select();
+document.execCommand("copy");
+setStatus(t.copied, "ok");
+setTimeout(updateButtons, 900);
+}
+});
 
-  els.imgFile.addEventListener("change", () => {
-    const f = els.imgFile.files && els.imgFile.files[0];
-    els.imgName.textContent = f ? f.name : "";
-    updateButtons();
-  });
+// --- crypto helpers ---
+const te = new TextEncoder();
+const td = new TextDecoder();
 
-  els.clearHtml.addEventListener("click", () => {
-    els.htmlFile.value = "";
-    els.htmlName.textContent = "";
-    els.urlInput.disabled = false;
-    updateButtons();
-  });
+function concatU8(...arrs) {
+const total = arrs.reduce((s,a)=>s+(a?a.length:0),0);
+const out = new Uint8Array(total);
+let o=0;
+for (const a of arrs) {
+if (!a) continue;
+out.set(a, o); o += a.length;
+}
+return out;
+}
 
-  els.clearImg.addEventListener("click", () => {
-    els.imgFile.value = "";
-    els.imgName.textContent = "";
-    updateButtons();
-  });
+async function sha256(u8) {
+const h = await crypto.subtle.digest("SHA-256", u8);
+return new Uint8Array(h);
+}
 
-  els.msg.addEventListener("input", updateButtons);
+function b64enc(u8) {
+let s = "";
+const chunk = 0x8000;
+for (let i=0;i<u8.length;i+=chunk) {
+s += String.fromCharCode.apply(null, u8.subarray(i, i+chunk));
+}
+return btoa(s);
+}
 
-  els.clearAll.addEventListener("click", () => {
-    els.urlInput.value = "";
-    els.urlInput.disabled = false;
-    els.htmlFile.value = "";
-    els.imgFile.value = "";
-    els.htmlName.textContent = "";
-    els.imgName.textContent = "";
-    els.msg.value = "";
-    els.out.value = "";
-    updateButtons();
-  });
+function b64dec(b64) {
+const bin = atob(b64);
+const out = new Uint8Array(bin.length);
+for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
+return out;
+}
 
-  els.copy.addEventListener("click", async () => {
-    const t = STR[lang];
-    const txt = els.out.value || "";
-    if (!txt) return;
-    try {
-      await navigator.clipboard.writeText(txt);
-      setStatus(t.copied, "ok");
-      setTimeout(updateButtons, 900);
-    } catch (e) {
-      // fallback
-      els.out.focus(); els.out.select();
-      document.execCommand("copy");
-      setStatus(t.copied, "ok");
-      setTimeout(updateButtons, 900);
-    }
-  });
+async function readTextFile(file) {
+return await file.text();
+}
 
-  // --- crypto helpers ---
-  const te = new TextEncoder();
-  const td = new TextDecoder();
+function normalizeText(s) {
+return (s || "").replace(/\s+/g, " ").trim().slice(0, 200000);
+}
 
-  function concatU8(...arrs) {
-    const total = arrs.reduce((s,a)=>s+(a?a.length:0),0);
-    const out = new Uint8Array(total);
-    let o=0;
-    for (const a of arrs) {
-      if (!a) continue;
-      out.set(a, o); o += a.length;
-    }
-    return out;
-  }
+function normalizeHTML(html) {
+try {
+const doc = new DOMParser().parseFromString(html, "text/html");
+for (const sel of ["script","style","noscript"]) {
+doc.querySelectorAll(sel).forEach(n=>n.remove());
+}
+const title = (doc.querySelector("title")?.textContent || "").trim();
+const bodyText = (doc.documentElement?.textContent || "");
+return normalizeText(title + "\n" + bodyText);
+} catch {
+return normalizeText(html);
+}
+}
 
-  async function sha256(u8) {
-    const h = await crypto.subtle.digest("SHA-256", u8);
-    return new Uint8Array(h);
-  }
+async function fetchTextWithTimeout(url, ms=8000) {
+const ctrl = new AbortController();
+const to = setTimeout(()=>ctrl.abort(), ms);
+try {
+const r = await fetch(url, {signal: ctrl.signal, credentials:"omit", cache:"no-store", mode:"cors"});
+if (!r.ok) throw new Error("HTTP " + r.status);
+return await r.text();
+} finally {
+clearTimeout(to);
+}
+}
 
-  function b64enc(u8) {
-    let s = "";
-    const chunk = 0x8000;
-    for (let i=0;i<u8.length;i+=chunk) {
-      s += String.fromCharCode.apply(null, u8.subarray(i, i+chunk));
-    }
-    return btoa(s);
-  }
+// The pointed URL is fetched directly, or not at all.
+// No relay/mirror fallback: routing the pointing through a third party
+// would disclose the very thing that is secret — which material is pointed at.
+async function loadHTMLKeyBytes() {
+const url = els.urlInput.value.trim();
+const file = els.htmlFile.files && els.htmlFile.files[0];
+if (file) {
+const txt = await readTextFile(file);
+return te.encode(normalizeHTML(txt));
+}
+if (url) {
+try {
+const txt = await fetchTextWithTimeout(url, 8000);
+return te.encode(normalizeHTML(txt));
+} catch (e) {
+const err = new Error("unreachable");
+err.ec = "unreachable";
+throw err;
+}
+}
+return null;
+}
 
-  function b64dec(b64) {
-    const bin = atob(b64);
-    const out = new Uint8Array(bin.length);
-    for (let i=0;i<bin.length;i++) out[i] = bin.charCodeAt(i);
-    return out;
-  }
+function loadPassageKeyBytes() {
+const v = els.passage.value;
+if (!v || !v.trim()) return null;
+return te.encode(normalizeText(v));
+}
 
-  function stripPrefix(s) {
-    const t = s.trim();
-    if (t.startsWith("EC1:")) return t.slice(4).trim();
-    return t;
-  }
+// --- pHash (32x32 DCT -> 8x8) — unchanged from v1: image sameness is perceptual ---
+function buildCosTable(N) {
+const table = Array.from({length:N}, () => new Float64Array(N));
+for (let u=0;u<N;u++) {
+for (let x=0;x<N;x++) {
+table[u][x] = Math.cos(((2*x+1)*u*Math.PI)/(2*N));
+}
+}
+return table;
+}
+const COS32 = buildCosTable(32);
 
-  async function readTextFile(file) {
-    return await file.text();
-  }
+function dct1d(vec, N) {
+const out = new Float64Array(N);
+for (let u=0;u<N;u++) {
+let sum = 0;
+for (let x=0;x<N;x++) sum += vec[x] * COS32[u][x];
+const c = (u===0) ? Math.sqrt(1/N) : Math.sqrt(2/N);
+out[u] = c * sum;
+}
+return out;
+}
 
-  function normalizeHTML(html) {
-    try {
-      const doc = new DOMParser().parseFromString(html, "text/html");
-      for (const sel of ["script","style","noscript"]) {
-        doc.querySelectorAll(sel).forEach(n=>n.remove());
-      }
-      const title = (doc.querySelector("title")?.textContent || "").trim();
-      const bodyText = (doc.documentElement?.textContent || "");
-      const normalized = (title + "\n" + bodyText)
-        .replace(/\s+/g, " ")
-        .trim()
-        .slice(0, 200000); // cap for speed
-      return normalized;
-    } catch {
-      return (html || "").replace(/\s+/g, " ").trim().slice(0, 200000);
-    }
-  }
+function dct2d(mat, N) {
+const tmp = Array.from({length:N}, ()=>new Float64Array(N));
+for (let y=0;y<N;y++) {
+const row = mat[y];
+const d = dct1d(row, N);
+tmp[y].set(d);
+}
+const out = Array.from({length:N}, ()=>new Float64Array(N));
+for (let x=0;x<N;x++) {
+const col = new Float64Array(N);
+for (let y=0;y<N;y++) col[y] = tmp[y][x];
+const d = dct1d(col, N);
+for (let y=0;y<N;y++) out[y][x] = d[y];
+}
+return out;
+}
 
-  async function fetchTextWithTimeout(url, ms=8000) {
-    const ctrl = new AbortController();
-    const to = setTimeout(()=>ctrl.abort(), ms);
-    try {
-      const r = await fetch(url, {signal: ctrl.signal, credentials:"omit", cache:"no-store", mode:"cors"});
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return await r.text();
-    } finally {
-      clearTimeout(to);
-    }
-  }
+async function imageToPHashBytes(file) {
+const blobUrl = URL.createObjectURL(file);
+try {
+let bmp;
+if ("createImageBitmap" in window) {
+bmp = await createImageBitmap(file);
+} else {
+const img = new Image();
+img.decoding = "async";
+img.src = blobUrl;
+await new Promise((res, rej)=>{ img.onload=res; img.onerror=rej; });
+bmp = img;
+}
+const c = document.createElement("canvas");
+const N = 32;
+c.width = N; c.height = N;
+const ctx = c.getContext("2d", {willReadFrequently:true});
+ctx.imageSmoothingEnabled = true;
+ctx.imageSmoothingQuality = "high";
+ctx.drawImage(bmp, 0, 0, N, N);
+const data = ctx.getImageData(0,0,N,N).data;
+const mat = Array.from({length:N}, ()=>new Float64Array(N));
+for (let y=0;y<N;y++) {
+for (let x=0;x<N;x++) {
+const i = (y*N + x)*4;
+const r=data[i], g=data[i+1], b=data[i+2];
+mat[y][x] = 0.299*r + 0.587*g + 0.114*b;
+}
+}
+const dct = dct2d(mat, N);
+const size = 8;
+const vals = [];
+for (let y=0;y<size;y++) {
+for (let x=0;x<size;x++) {
+if (x===0 && y===0) continue;
+vals.push(dct[y][x]);
+}
+}
+vals.sort((a,b)=>a-b);
+const med = vals[Math.floor(vals.length/2)] || 0;
+const bytes = new Uint8Array(8);
+let bitIndex = 0;
+for (let y=0;y<size;y++) {
+for (let x=0;x<size;x++) {
+const v = dct[y][x];
+const bit = v > med ? 1 : 0;
+const bytePos = (bitIndex >> 3);
+const shift = 7 - (bitIndex & 7);
+bytes[bytePos] |= (bit << shift);
+bitIndex++;
+}
+}
+return bytes;
+} finally {
+URL.revokeObjectURL(blobUrl);
+}
+}
 
-  async function loadHTMLKeyBytes() {
-    const url = els.urlInput.value.trim();
-    const file = els.htmlFile.files && els.htmlFile.files[0];
-    if (file) {
-      const txt = await readTextFile(file);
-      return te.encode(normalizeHTML(txt));
-    }
-    if (url) {
-      try {
-        const txt = await fetchTextWithTimeout(url, 8000);
-        return te.encode(normalizeHTML(txt));
-      } catch (e) {
-        // fallback via text mirror (works for many CORS-blocked pages)
-        const mirrored = "https://r.jina.ai/http://" + url.replace(/^https?:\/\//i, "");
-        const txt = await fetchTextWithTimeout(mirrored, 9000);
-        return te.encode(normalizeHTML(txt));
-      }
-    }
-    return null;
-  }
+// --- key material (shared loaders, cached per operation) ---
+async function collectMaterials() {
+const htmlBytes = await loadHTMLKeyBytes();
+const passageBytes = loadPassageKeyBytes();
+const imgFile = els.imgFile.files && els.imgFile.files[0];
+const imgHash = imgFile ? await imageToPHashBytes(imgFile) : null;
+return { htmlBytes, passageBytes, imgHash };
+}
 
-  // --- pHash (32x32 DCT -> 8x8) ---
-  function buildCosTable(N) {
-    const table = Array.from({length:N}, () => new Float64Array(N));
-    for (let u=0;u<N;u++) {
-      for (let x=0;x<N;x++) {
-        table[u][x] = Math.cos(((2*x+1)*u*Math.PI)/(2*N));
-      }
-    }
-    return table;
-  }
+// v1 (legacy): sha256("EC|1.1.2|" || sha256(html) || pHash || salt)
+// Kept verbatim so envelopes made by earlier versions still open.
+async function buildKeyBytesV1(m, salt) {
+if (!m.htmlBytes && !m.imgHash) return null;
+const domainSep = te.encode("EC|1.1.2|");
+const htmlHash = m.htmlBytes ? await sha256(m.htmlBytes) : new Uint8Array(0);
+const imgPart = m.imgHash ? m.imgHash : new Uint8Array(0);
+const material = concatU8(domainSep, htmlHash, imgPart, salt);
+return await sha256(material);
+}
 
-  const COS32 = buildCosTable(32);
+// v2: HKDF-SHA256(ikm = tagged material hashes, salt, info="EC|2.0|") -> AES-GCM-256
+// Tags prevent ambiguity between material types; HKDF replaces ad-hoc hashing.
+async function buildKeyV2(m, salt) {
+if (!m.htmlBytes && !m.passageBytes && !m.imgHash) return null;
+const parts = [];
+if (m.htmlBytes) parts.push(te.encode("H:"), await sha256(m.htmlBytes));
+if (m.passageBytes) parts.push(te.encode("P:"), await sha256(m.passageBytes));
+if (m.imgHash) parts.push(te.encode("I:"), m.imgHash);
+const ikm = await crypto.subtle.importKey("raw", concatU8(...parts), "HKDF", false, ["deriveKey"]);
+return await crypto.subtle.deriveKey(
+{name:"HKDF", hash:"SHA-256", salt, info: te.encode("EC|2.0|")},
+ikm,
+{name:"AES-GCM", length:256},
+false,
+["encrypt","decrypt"]
+);
+}
 
-  function dct1d(vec, N) {
-    const out = new Float64Array(N);
-    for (let u=0;u<N;u++) {
-      let sum = 0;
-      for (let x=0;x<N;x++) sum += vec[x] * COS32[u][x];
-      const c = (u===0) ? Math.sqrt(1/N) : Math.sqrt(2/N);
-      out[u] = c * sum;
-    }
-    return out;
-  }
+async function importAesKey(keyBytes) {
+return await crypto.subtle.importKey(
+"raw",
+keyBytes,
+{name:"AES-GCM", length:256},
+false,
+["encrypt","decrypt"]
+);
+}
 
-  function dct2d(mat, N) {
-    // mat: array of Float64Array rows
-    const tmp = Array.from({length:N}, ()=>new Float64Array(N));
-    for (let y=0;y<N;y++) {
-      const row = mat[y];
-      const d = dct1d(row, N);
-      tmp[y].set(d);
-    }
-    const out = Array.from({length:N}, ()=>new Float64Array(N));
-    for (let x=0;x<N;x++) {
-      const col = new Float64Array(N);
-      for (let y=0;y<N;y++) col[y] = tmp[y][x];
-      const d = dct1d(col, N);
-      for (let y=0;y<N;y++) out[y][x] = d[y];
-    }
-    return out;
-  }
+function randomBytes(n) {
+const u = new Uint8Array(n);
+crypto.getRandomValues(u);
+return u;
+}
 
-  async function imageToPHashBytes(file) {
-    const blobUrl = URL.createObjectURL(file);
-    try {
-      let bmp;
-      if ("createImageBitmap" in window) {
-        bmp = await createImageBitmap(file);
-      } else {
-        const img = new Image();
-        img.decoding = "async";
-        img.src = blobUrl;
-        await new Promise((res, rej)=>{ img.onload=res; img.onerror=rej; });
-        bmp = img;
-      }
-      const c = document.createElement("canvas");
-      const N = 32;
-      c.width = N; c.height = N;
-      const ctx = c.getContext("2d", {willReadFrequently:true});
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = "high";
-      ctx.drawImage(bmp, 0, 0, N, N);
-      const data = ctx.getImageData(0,0,N,N).data;
-      const mat = Array.from({length:N}, ()=>new Float64Array(N));
-      for (let y=0;y<N;y++) {
-        for (let x=0;x<N;x++) {
-          const i = (y*N + x)*4;
-          const r=data[i], g=data[i+1], b=data[i+2];
-          // luminance
-          mat[y][x] = 0.299*r + 0.587*g + 0.114*b;
-        }
-      }
-      const dct = dct2d(mat, N);
-      const size = 8;
-      const vals = [];
-      for (let y=0;y<size;y++) {
-        for (let x=0;x<size;x++) {
-          if (x===0 && y===0) continue;
-          vals.push(dct[y][x]);
-        }
-      }
-      vals.sort((a,b)=>a-b);
-      const med = vals[Math.floor(vals.length/2)] || 0;
-      // 64 bits
-      const bytes = new Uint8Array(8);
-      let bitIndex = 0;
-      for (let y=0;y<size;y++) {
-        for (let x=0;x<size;x++) {
-          const v = dct[y][x];
-          const bit = v > med ? 1 : 0;
-          const bytePos = (bitIndex >> 3);
-          const shift = 7 - (bitIndex & 7);
-          bytes[bytePos] |= (bit << shift);
-          bitIndex++;
-        }
-      }
-      return bytes;
-    } finally {
-      URL.revokeObjectURL(blobUrl);
-    }
-  }
+async function encryptMessage(plain) {
+const salt = randomBytes(16);
+const iv = randomBytes(12);
+const m = await collectMaterials();
+const key = await buildKeyV2(m, salt);
+if (!key) return null;
+const pt = te.encode(plain);
+const ctBuf = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, pt);
+const packed = concatU8(salt, iv, new Uint8Array(ctBuf));
+return "EC2:" + b64enc(packed);
+}
 
-  async function buildKeyBytes(salt) {
-    // requires at least one key material
-    const htmlBytes = await loadHTMLKeyBytes();
-    const imgFile = els.imgFile.files && els.imgFile.files[0];
-    const imgHash = imgFile ? await imageToPHashBytes(imgFile) : null;
+function parseEnvelope(s) {
+const t = s.trim();
+if (t.startsWith("EC2:")) return {v:2, b64:t.slice(4).trim()};
+if (t.startsWith("EC1:")) return {v:1, b64:t.slice(4).trim()};
+return {v:1, b64:t}; // legacy envelopes had no mandatory prefix
+}
 
-    if (!htmlBytes && !imgHash) return null;
+async function decryptMessage(cipherText) {
+const env = parseEnvelope(cipherText);
+let packed;
+try {
+packed = b64dec(env.b64);
+} catch {
+return {ok:false, reason:"bad"};
+}
+if (packed.length < (16+12+16)) return {ok:false, reason:"bad"};
+const salt = packed.slice(0,16);
+const iv = packed.slice(16,28);
+const ct = packed.slice(28);
+const m = await collectMaterials();
+let key;
+if (env.v === 2) {
+key = await buildKeyV2(m, salt);
+} else {
+const keyBytes = await buildKeyBytesV1(m, salt);
+key = keyBytes ? await importAesKey(keyBytes) : null;
+}
+if (!key) return {ok:false, reason:"bad"};
+try {
+const ptBuf = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, ct);
+return {ok:true, text: td.decode(new Uint8Array(ptBuf))};
+} catch {
+return {ok:false, reason:"fail"};
+}
+}
 
-    const domainSep = te.encode("EC|1.1.2|");
-    const htmlHash = htmlBytes ? await sha256(htmlBytes) : new Uint8Array(0);
-    const imgPart = imgHash ? imgHash : new Uint8Array(0);
+async function runEncrypt() {
+const t = STR[lang];
+setStatus(t.working, "");
+try {
+const msg = els.msg.value.trim();
+const out = await encryptMessage(msg);
+if (!out) {
+setStatus(t.needKey, "bad");
+return;
+}
+els.out.value = out;
+setStatus(t.doneEnc, "ok");
+} catch (e) {
+console.error(e);
+setStatus(e && e.ec === "unreachable" ? t.unreachable : t.fail, "bad");
+} finally {
+setTimeout(updateButtons, 800);
+}
+}
 
-    const material = concatU8(domainSep, htmlHash, imgPart, salt);
-    return await sha256(material); // 32 bytes
-  }
+async function runDecrypt() {
+const t = STR[lang];
+setStatus(t.working, "");
+try {
+const msg = els.msg.value.trim();
+const res = await decryptMessage(msg);
+if (!res.ok) {
+setStatus(res.reason==="bad" ? t.badInput : t.fail, "bad");
+return;
+}
+els.out.value = res.text;
+setStatus(t.doneDec, "ok");
+} catch (e) {
+console.error(e);
+setStatus(e && e.ec === "unreachable" ? t.unreachable : t.fail, "bad");
+} finally {
+setTimeout(updateButtons, 800);
+}
+}
 
-  async function importAesKey(keyBytes) {
-    return await crypto.subtle.importKey(
-      "raw",
-      keyBytes,
-      {name:"AES-GCM", length:256},
-      false,
-      ["encrypt","decrypt"]
-    );
-  }
+els.enc.addEventListener("click", runEncrypt);
+els.dec.addEventListener("click", runDecrypt);
 
-  function randomBytes(n) {
-    const u = new Uint8Array(n);
-    crypto.getRandomValues(u);
-    return u;
-  }
+setLang(lang);
 
-  async function encryptMessage(plain) {
-    const salt = randomBytes(16);
-    const iv = randomBytes(12);
-    const keyBytes = await buildKeyBytes(salt);
-    if (!keyBytes) return null;
-    const key = await importAesKey(keyBytes);
-    const pt = te.encode(plain);
-    const ctBuf = await crypto.subtle.encrypt({name:"AES-GCM", iv}, key, pt);
-    const ct = new Uint8Array(ctBuf);
-    const packed = concatU8(salt, iv, ct);
-    return b64enc(packed);
-  }
-
-  async function decryptMessage(cipherText) {
-    const b64 = stripPrefix(cipherText);
-    let packed;
-    try {
-      packed = b64dec(b64);
-    } catch {
-      return {ok:false, reason:"bad"};
-    }
-    if (packed.length < (16+12+16)) return {ok:false, reason:"bad"};
-    const salt = packed.slice(0,16);
-    const iv = packed.slice(16,28);
-    const ct = packed.slice(28);
-    const keyBytes = await buildKeyBytes(salt);
-    if (!keyBytes) return {ok:false, reason:"bad"};
-    const key = await importAesKey(keyBytes);
-    try {
-      const ptBuf = await crypto.subtle.decrypt({name:"AES-GCM", iv}, key, ct);
-      return {ok:true, text: td.decode(new Uint8Array(ptBuf))};
-    } catch {
-      return {ok:false, reason:"fail"};
-    }
-  }
-
-  async function runEncrypt() {
-    const t = STR[lang];
-    setStatus(t.working, "");
-    try {
-      const msg = els.msg.value.trim();
-      const out = await encryptMessage(msg);
-      if (!out) {
-        setStatus(t.needKey, "bad");
-        return;
-      }
-      els.out.value = out;
-      setStatus(t.doneEnc, "ok");
-    } catch (e) {
-      console.error(e);
-      setStatus(t.fail, "bad");
-    } finally {
-      setTimeout(updateButtons, 800);
-    }
-  }
-
-  async function runDecrypt() {
-    const t = STR[lang];
-    setStatus(t.working, "");
-    try {
-      const msg = els.msg.value.trim();
-      const res = await decryptMessage(msg);
-      if (!res.ok) {
-        setStatus(res.reason==="bad" ? t.badInput : t.fail, "bad");
-        return;
-      }
-      els.out.value = res.text;
-      setStatus(t.doneDec, "ok");
-    } catch (e) {
-      console.error(e);
-      setStatus(t.fail, "bad");
-    } finally {
-      setTimeout(updateButtons, 800);
-    }
-  }
-
-  els.enc.addEventListener("click", runEncrypt);
-  els.dec.addEventListener("click", runDecrypt);
-
-  // Try to avoid "stuck old UI": SW + one-shot reload on controller change
-  if ("serviceWorker" in navigator) {
-    window.addEventListener("load", async () => {
-      try {
-        const reg = await navigator.serviceWorker.register("./sw.js?v=114", {updateViaCache:"none"});
-        reg.update?.();
-        let reloaded = false;
-        navigator.serviceWorker.addEventListener("controllerchange", () => {
-          if (reloaded) return;
-          reloaded = true;
-          location.reload();
-        });
-      } catch (e) {
-        // ignore
-      }
-    });
-  }
+// SW + one-shot reload on controller change
+if ("serviceWorker" in navigator) {
+window.addEventListener("load", async () => {
+try {
+const reg = await navigator.serviceWorker.register("./sw.js?v=115", {updateViaCache:"none"});
+reg.update?.();
+let reloaded = false;
+navigator.serviceWorker.addEventListener("controllerchange", () => {
+if (reloaded) return;
+reloaded = true;
+location.reload();
+});
+} catch (e) {
+// ignore
+}
+});
+}
 
 })();
 </script>
