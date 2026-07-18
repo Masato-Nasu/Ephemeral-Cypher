@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <meta name="theme-color" content="#0a0a0d" />
   <meta name="color-scheme" content="dark" />
-  <meta name="description" content="Website, HTML, and images become ephemeral key materials for client-side encryption." />
-  <link rel="manifest" href="./manifest.json?v=201" />
+  <meta name="description" content="Web pages captured by a privacy-preserving Companion, saved HTML, and images become ephemeral key materials for client-side encryption." />
+  <link rel="manifest" href="./manifest.json?v=210" />
   <link rel="icon" href="./icon-192.png" />
   <link rel="apple-touch-icon" href="./icon-192.png" />
   <title>Ephemeral Cypher</title>
@@ -192,6 +192,19 @@
     .material-sub{font-size:10px;color:var(--muted-2);margin-top:2px}
     .material-body{padding:0 14px 14px}
     .url-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+    .companion-box{
+      display:flex;align-items:center;gap:11px;min-height:58px;padding:11px 12px;
+      border:1px solid var(--line);border-radius:15px;background:rgba(0,0,0,.13);
+    }
+    .companion-mark{
+      width:32px;height:32px;flex:0 0 auto;border:1px solid var(--line-strong);border-radius:11px;
+      display:grid;place-items:center;color:var(--accent);background:rgba(216,200,255,.055);font-size:13px;
+    }
+    .companion-copy{min-width:0;flex:1}
+    .companion-state{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text)}
+    .companion-detail{margin-top:3px;font-size:9.5px;line-height:1.55;color:var(--muted-2);word-break:break-word}
+    .companion-box.connected{border-color:rgba(216,200,255,.30);background:rgba(216,200,255,.04)}
+    .companion-box.connected .companion-mark{background:rgba(216,200,255,.12)}
     input[type="url"],textarea{
       width:100%;border:1px solid var(--line);border-radius:var(--radius-md);
       background:var(--field);color:var(--text);outline:none;
@@ -340,9 +353,13 @@
                 </div>
               </div>
               <div class="material-body">
-                <div class="url-row">
-                  <input id="urlInput" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.com/article" />
-                  <button class="icon-button" id="clearUrl" type="button" aria-label="Clear URL">×</button>
+                <div class="companion-box" id="companionBox">
+                  <div class="companion-mark">◎</div>
+                  <div class="companion-copy">
+                    <div class="companion-state" id="companionState">Companionでページを指す</div>
+                    <div class="companion-detail" id="companionDetail"></div>
+                  </div>
+                  <button class="tiny-clear" id="clearCompanion" type="button" aria-label="Clear captured page">×</button>
                 </div>
                 <div class="or-line" id="orLabel">or local HTML</div>
                 <div class="file-row">
@@ -422,7 +439,7 @@
 
     <footer class="footer">
       <div class="legacy-note" id="legacyNote"></div>
-      <div>Ephemeral Cypher · EC2 · <span id="versionLabel">v2.0.1</span></div>
+      <div>Ephemeral Cypher · EC2 · <span id="versionLabel">v2.1.0</span></div>
     </footer>
   </main>
 
@@ -430,29 +447,21 @@
 (() => {
   "use strict";
 
-  const VERSION = "2.0.1";
+  const VERSION = "2.1.0";
   const te = new TextEncoder();
   const td = new TextDecoder();
-
-  class UnreachableError extends Error {
-    constructor(message, cause) {
-      super(message);
-      this.name = "UnreachableError";
-      this.cause = cause;
-    }
-  }
 
   const STR = {
     ja: {
       title:"Ephemeral Cypher",
       subtitle:"公開されている素材を指し示し、その一時的な姿を鍵にする。暗号化と復号は端末内で行われます。",
-      privacy:"第三者中継なし · URL使用時のみ入力先へ直接接続",
+      privacy:"第三者中継なし · Companionはページ指紋だけを渡します",
       keysTitle:"鍵素材", keysNote:"1つ以上を選択 · 組み合わせ可能",
-      pageTitle:"Webページ / HTML", pageSub:"見える文章を正規化して鍵素材にします",
-      or:"or local HTML", pickHtml:"HTMLを選択",
+      pageTitle:"Webページ / HTML", pageSub:"Companionで今見ているページを指すか、保存HTMLを使います",
+      or:"or local HTML", pickHtml:"HTMLを選択", companionWaiting:"Companionでページを指す", companionWaitingDetail:"鍵にしたいページでChrome拡張『Ephemeral Cypher Companion』を開き、このページを鍵にするを押します。", companionReady:"WEB PAGE CAPTURED", companionReadyDetail:"ページ指紋 {fp} を端末内で受け取りました。URLと本文は送信されません。",
       imageTitle:"画像", imageSub:"見た目から知覚ハッシュを生成します", pickImage:"画像を選択",
       selected:"選択中", none:"なし", page:"ページ", image:"画像",
-      network:"通信", networkNone:"なし（端末内のみ）", networkDirect:"入力URLへ直接接続",
+      network:"通信", networkNone:"なし（端末内のみ）",
       messageTitle:"封書", inputMessage:"メッセージ", inputCipher:"暗号文",
       plainHint:"PLAIN TEXT", cipherHint:"EC2 / EC1 / LEGACY",
       messagePlaceholder:"暗号化する文章を入力…", cipherPlaceholder:"EC2: から始まる暗号文、または旧形式を貼り付け…",
@@ -465,24 +474,22 @@
       encrypted:"SEALED", encryptedMsg:"EC2形式で暗号化しました。",
       decrypted:"GOOD", decryptedMsg:"鍵素材が一致しました。封書を開きました。",
       dead:"OOPS", deadMsg:"素材には到達しましたが、鍵が一致しません。内容が変化した可能性があります。",
-      unreachable:"UNREACHABLE", unreachableMsg:"URLへ到達できません。生死は判定できません。HTMLを保存して添付してください。",
       invalid:"INVALID", invalidMsg:"暗号文の形式を読み取れません。",
       error:"ERROR", errorMsg:"処理に失敗しました。ブラウザの対応状況と素材を確認してください。",
       copied:"COPIED", copiedMsg:"結果をコピーしました。", saved:"SAVED", savedMsg:"結果をTXTで保存しました。", loaded:"LOADED", loadedMsg:"暗号文をTXTから読み込みました。",
       legacy:"新しい封書は EC2（HKDF + AES-GCM）です。EC1: および無印の旧暗号文も復号できます。",
-      legacyKeyRequired:"旧暗号文には、Webページ / HTML または画像の鍵素材が必要です。",
-      htmlLocked:"HTMLファイル選択中はURL入力を使用しません。"
+      legacyKeyRequired:"旧暗号文には、Webページ / HTML または画像の鍵素材が必要です。"
     },
     en: {
       title:"Ephemeral Cypher",
       subtitle:"Point to public material and use its temporary form as a key. Encryption and decryption happen on this device.",
-      privacy:"No third-party relay · direct request only when a URL is used",
+      privacy:"No third-party relay · Companion passes only a page fingerprint",
       keysTitle:"Key materials", keysNote:"Choose one or more · combinations allowed",
-      pageTitle:"Web page / HTML", pageSub:"Visible text is normalized into key material",
-      or:"or local HTML", pickHtml:"Choose HTML",
+      pageTitle:"Web page / HTML", pageSub:"Point to the page you are viewing with Companion, or use saved HTML",
+      or:"or local HTML", pickHtml:"Choose HTML", companionWaiting:"Point with Companion", companionWaitingDetail:"On the page you want to use, open the Ephemeral Cypher Companion extension and choose Use this page as key.", companionReady:"WEB PAGE CAPTURED", companionReadyDetail:"Page fingerprint {fp} was received on-device. The URL and page text are not sent.",
       imageTitle:"Image", imageSub:"A perceptual hash is derived from its appearance", pickImage:"Choose image",
       selected:"Selected", none:"None", page:"Page", image:"Image",
-      network:"Network", networkNone:"None (on-device only)", networkDirect:"Direct request to the entered URL",
+      network:"Network", networkNone:"None (on-device only)",
       messageTitle:"Envelope", inputMessage:"Message", inputCipher:"Ciphertext",
       plainHint:"PLAIN TEXT", cipherHint:"EC2 / EC1 / LEGACY",
       messagePlaceholder:"Write a message to seal…", cipherPlaceholder:"Paste EC2:, EC1:, or legacy ciphertext…",
@@ -495,13 +502,11 @@
       encrypted:"SEALED", encryptedMsg:"Encrypted in EC2 format.",
       decrypted:"GOOD", decryptedMsg:"The key material matched. The envelope is open.",
       dead:"OOPS", deadMsg:"The material answered, but the key did not match. Its content may have changed.",
-      unreachable:"UNREACHABLE", unreachableMsg:"The URL could not be reached, so the state is unknown. Save the page and attach the HTML.",
       invalid:"INVALID", invalidMsg:"The ciphertext format could not be read.",
       error:"ERROR", errorMsg:"Processing failed. Check browser support and the selected material.",
       copied:"COPIED", copiedMsg:"Result copied.", saved:"SAVED", savedMsg:"Result saved as a text file.", loaded:"LOADED", loadedMsg:"Ciphertext loaded from the text file.",
       legacy:"New envelopes use EC2 (HKDF + AES-GCM). EC1: and unprefixed legacy ciphertext remain decryptable.",
-      legacyKeyRequired:"Legacy ciphertext requires a web page / HTML or image key material.",
-      htmlLocked:"The URL field is not used while an HTML file is selected."
+      legacyKeyRequired:"Legacy ciphertext requires a web page / HTML or image key material."
     }
   };
 
@@ -515,7 +520,8 @@
     messageInput:$("messageInput"),cipherFile:$("cipherFile"),loadTextLabel:$("loadTextLabel"),runButton:$("runButton"),swapButton:$("swapButton"),clearAll:$("clearAll"),resultLabel:$("resultLabel"),resultHint:$("resultHint"),
     resultOutput:$("resultOutput"),resultStamp:$("resultStamp"),copyButton:$("copyButton"),saveButton:$("saveButton"),legacyNote:$("legacyNote"),versionLabel:$("versionLabel"),
     stateDot:$("stateDot"),stateLabel:$("stateLabel"),stateMessage:$("stateMessage"),
-    urlInput:$("urlInput"),clearUrl:$("clearUrl"),htmlFile:$("htmlFile"),htmlName:$("htmlName"),clearHtml:$("clearHtml"),
+    companionBox:$("companionBox"),companionState:$("companionState"),companionDetail:$("companionDetail"),clearCompanion:$("clearCompanion"),
+    htmlFile:$("htmlFile"),htmlName:$("htmlName"),clearHtml:$("clearHtml"),
     imgFile:$("imgFile"),imgName:$("imgName"),clearImage:$("clearImage"),
     pageMaterial:$("pageMaterial"),imageMaterial:$("imageMaterial")
   };
@@ -524,6 +530,8 @@
   if (!/^(ja|en)$/.test(lang)) lang = navigator.language?.toLowerCase().startsWith("ja") ? "ja" : "en";
   let mode = "encrypt";
   let stateTimer = null;
+  let companionPageHash = null;
+  const COMPANION_SESSION_KEY = "ephemeral-cypher-companion-page-hash";
 
   function setState(label, message, kind="") {
     clearTimeout(stateTimer);
@@ -572,17 +580,27 @@
 
   function selectedMaterials() {
     return {
-      page:!!els.urlInput.value.trim() || !!els.htmlFile.files?.[0],
+      page:!!companionPageHash || !!els.htmlFile.files?.[0],
       image:!!els.imgFile.files?.[0]
     };
+  }
+
+  function fingerprintLabel(bytes) {
+    if(!bytes) return "";
+    return Array.from(bytes.slice(0,6),b=>b.toString(16).padStart(2,"0").toUpperCase()).join("") + "…";
   }
 
   function updateSummary() {
     const t=STR[lang], m=selectedMaterials(), names=[];
     if(m.page) names.push(t.page); if(m.image) names.push(t.image);
     els.selectedSummary.textContent=names.length?names.join(" + "):t.none;
-    els.networkSummary.textContent=els.urlInput.value.trim()?t.networkDirect:t.networkNone;
+    els.networkSummary.textContent=t.networkNone;
     els.pageMaterial.classList.toggle("active",m.page); els.imageMaterial.classList.toggle("active",m.image);
+    const fp=fingerprintLabel(companionPageHash);
+    els.companionBox.classList.toggle("connected",!!companionPageHash);
+    els.companionState.textContent=companionPageHash?t.companionReady:t.companionWaiting;
+    els.companionDetail.textContent=companionPageHash?t.companionReadyDetail.replace("{fp}",fp):t.companionWaitingDetail;
+    els.clearCompanion.hidden=!companionPageHash;
   }
 
   function hasAnyKey() { const m=selectedMaterials(); return m.page||m.image; }
@@ -599,16 +617,6 @@
     else setState(t.ready,t.readyMsg,"");
   }
 
-  function syncPageInputs(source) {
-    const hasHtml=!!els.htmlFile.files?.[0];
-    if(source==="url" && els.urlInput.value.trim()) {
-      els.htmlFile.value=""; els.htmlName.textContent="";
-    }
-    els.urlInput.disabled=hasHtml;
-    if(hasHtml) els.urlInput.value="";
-    updateReadiness();
-  }
-
   function concatU8(...arrs) {
     const total=arrs.reduce((n,a)=>n+(a?.length||0),0), out=new Uint8Array(total); let p=0;
     for(const a of arrs){if(!a)continue;out.set(a,p);p+=a.length;} return out;
@@ -618,6 +626,30 @@
   function randomBytes(n){const b=new Uint8Array(n);crypto.getRandomValues(b);return b;}
   function b64enc(u8){let s="";for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode(...u8.subarray(i,i+0x8000));return btoa(s);}
   function b64dec(s){const bin=atob(s),out=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return out;}
+  function b64urlDec(s){const clean=(s||"").replace(/-/g,"+").replace(/_/g,"/");return b64dec(clean+"=".repeat((4-clean.length%4)%4));}
+
+  function loadCompanionMaterial() {
+    let encoded="";
+    try {
+      const params=new URLSearchParams(location.hash.startsWith("#")?location.hash.slice(1):location.hash);
+      encoded=params.get("ecpage")||"";
+      if(encoded) {
+        const decoded=b64urlDec(encoded);
+        if(decoded.length!==32) throw new Error("invalid companion fingerprint");
+        sessionStorage.setItem(COMPANION_SESSION_KEY,encoded);
+        companionPageHash=decoded;
+        history.replaceState(null,"",location.pathname+location.search);
+        return;
+      }
+    } catch(error) { console.warn("Invalid companion material",error); }
+    try {
+      encoded=sessionStorage.getItem(COMPANION_SESSION_KEY)||"";
+      if(encoded) {
+        const decoded=b64urlDec(encoded);
+        if(decoded.length===32) companionPageHash=decoded;
+      }
+    } catch(error) { console.warn("Could not restore companion material",error); }
+  }
 
   function normalizeHTML(html) {
     try {
@@ -631,26 +663,11 @@
     }
   }
 
-  async function fetchTextWithTimeout(rawUrl,ms=9000) {
-    let url;
-    try { url=new URL(rawUrl); } catch { throw new UnreachableError("Invalid URL"); }
-    if(!/^https?:$/.test(url.protocol)) throw new UnreachableError("Unsupported protocol");
-    const ctrl=new AbortController(), timer=setTimeout(()=>ctrl.abort(),ms);
-    try {
-      const response=await fetch(url.href,{signal:ctrl.signal,credentials:"omit",cache:"no-store",mode:"cors",redirect:"follow"});
-      if(!response.ok) throw new Error("HTTP "+response.status);
-      return await response.text();
-    } catch(error) {
-      throw new UnreachableError("Direct URL request failed",error);
-    } finally { clearTimeout(timer); }
-  }
-
-  async function loadPageBytes() {
+  async function loadPageMaterial() {
     const file=els.htmlFile.files?.[0];
-    if(file) return te.encode(normalizeHTML(await file.text()));
-    const url=els.urlInput.value.trim();
-    if(url) return te.encode(normalizeHTML(await fetchTextWithTimeout(url)));
-    return null;
+    if(file) return {pageBytes:te.encode(normalizeHTML(await file.text())),pageHash:null};
+    if(companionPageHash) return {pageBytes:null,pageHash:companionPageHash};
+    return {pageBytes:null,pageHash:null};
   }
 
   function buildCosTable(N){const table=Array.from({length:N},()=>new Float64Array(N));for(let u=0;u<N;u++)for(let x=0;x<N;x++)table[u][x]=Math.cos(((2*x+1)*u*Math.PI)/(2*N));return table;}
@@ -677,32 +694,38 @@
   }
 
   async function collectMaterials() {
-    const pageBytes=await loadPageBytes();
+    const {pageBytes,pageHash}=await loadPageMaterial();
     const imageFile=els.imgFile.files?.[0];
     const imageHash=imageFile?await imageToPHashBytes(imageFile):null;
-    return {pageBytes,imageHash};
+    return {pageBytes,pageHash,imageHash};
+  }
+
+  async function resolvedPageHash(materials) {
+    if(materials.pageHash) return materials.pageHash;
+    if(materials.pageBytes) return await sha256(materials.pageBytes);
+    return null;
   }
 
   async function buildLegacyKeyBytes(salt) {
-    const {pageBytes,imageHash}=await collectMaterials();
-    if(!pageBytes&&!imageHash) return null;
+    const materials=await collectMaterials();
+    const pageHash=await resolvedPageHash(materials);
+    if(!pageHash&&!materials.imageHash) return null;
     const domainSep=te.encode("EC|1.1.2|");
-    const pageHash=pageBytes?await sha256(pageBytes):new Uint8Array(0);
-    return await sha256(concatU8(domainSep,pageHash,imageHash||new Uint8Array(0),salt));
+    return await sha256(concatU8(domainSep,pageHash||new Uint8Array(0),materials.imageHash||new Uint8Array(0),salt));
   }
 
   async function buildEC2Key(salt) {
-    const {pageBytes,imageHash}=await collectMaterials();
-    if(!pageBytes&&!imageHash) return null;
+    const materials=await collectMaterials();
+    const pageHash=await resolvedPageHash(materials);
+    if(!pageHash&&!materials.imageHash) return null;
     const parts=[te.encode("EphemeralCypher\0EC2\0")];
-    const add=async(tag,data,hashFirst=true)=>{
-      if(!data)return;
-      const value=hashFirst?await sha256(data):data;
+    const add=(tag,value)=>{
+      if(!value)return;
       const tagBytes=te.encode(tag+"\0");
       parts.push(tagBytes,u32be(value.length),value);
     };
-    await add("page-visible-text-sha256",pageBytes,true);
-    await add("image-phash-64",imageHash,false);
+    add("page-visible-text-sha256",pageHash);
+    add("image-phash-64",materials.imageHash);
     const ikmBytes=await sha256(concatU8(...parts));
     const ikm=await crypto.subtle.importKey("raw",ikmBytes,"HKDF",false,["deriveKey"]);
     return crypto.subtle.deriveKey(
@@ -765,8 +788,7 @@
     } catch(error) {
       console.error(error);
       els.resultOutput.value="";
-      if(error instanceof UnreachableError) setState(t.unreachable,t.unreachableMsg,"warn");
-      else if(error.message==="bad-format") setState(t.invalid,t.invalidMsg,"bad");
+      if(error.message==="bad-format") setState(t.invalid,t.invalidMsg,"bad");
       else if(error.message==="legacy-key-required") setState(t.needKey,t.legacyKeyRequired,"bad");
       else setState(t.error,t.errorMsg,"bad");
       els.resultStamp.textContent=t.empty;
@@ -779,10 +801,9 @@
 
   els.btnJa.addEventListener("click",()=>setLang("ja"));els.btnEn.addEventListener("click",()=>setLang("en"));
   els.modeEncrypt.addEventListener("click",()=>setMode("encrypt"));els.modeDecrypt.addEventListener("click",()=>setMode("decrypt"));
-  els.urlInput.addEventListener("input",()=>syncPageInputs("url"));
-  els.clearUrl.addEventListener("click",()=>{els.urlInput.value="";updateReadiness();});
-  els.htmlFile.addEventListener("change",()=>{const f=els.htmlFile.files?.[0];els.htmlName.textContent=f?f.name:"";syncPageInputs("html");});
-  els.clearHtml.addEventListener("click",()=>{els.htmlFile.value="";els.htmlName.textContent="";els.urlInput.disabled=false;updateReadiness();});
+  els.clearCompanion.addEventListener("click",()=>{companionPageHash=null;sessionStorage.removeItem(COMPANION_SESSION_KEY);updateReadiness();});
+  els.htmlFile.addEventListener("change",()=>{const f=els.htmlFile.files?.[0];els.htmlName.textContent=f?f.name:"";if(f){companionPageHash=null;sessionStorage.removeItem(COMPANION_SESSION_KEY);}updateReadiness();});
+  els.clearHtml.addEventListener("click",()=>{els.htmlFile.value="";els.htmlName.textContent="";updateReadiness();});
   els.imgFile.addEventListener("change",()=>{const f=els.imgFile.files?.[0];els.imgName.textContent=f?f.name:"";updateReadiness();});
   els.clearImage.addEventListener("click",()=>{els.imgFile.value="";els.imgName.textContent="";updateReadiness();});
   els.messageInput.addEventListener("input",updateReadiness);
@@ -823,7 +844,7 @@
     setTemporaryState(STR[lang].saved,STR[lang].savedMsg,"good");
   });
   els.clearAll.addEventListener("click",()=>{
-    els.urlInput.value="";els.urlInput.disabled=false;els.htmlFile.value="";els.htmlName.textContent="";
+    companionPageHash=null;sessionStorage.removeItem(COMPANION_SESSION_KEY);els.htmlFile.value="";els.htmlName.textContent="";
     els.imgFile.value="";els.imgName.textContent="";els.messageInput.value="";els.resultOutput.value="";updateReadiness();
   });
   els.swapButton.addEventListener("click",()=>{
@@ -837,12 +858,13 @@
   });
 
   els.versionLabel.textContent="v"+VERSION;
+  loadCompanionMaterial();
   setLang(lang);
 
   if("serviceWorker" in navigator) {
     window.addEventListener("load",async()=>{
       try {
-        const reg=await navigator.serviceWorker.register("./sw.js?v=201",{updateViaCache:"none"});
+        const reg=await navigator.serviceWorker.register("./sw.js?v=210",{updateViaCache:"none"});
         reg.update?.();let reloaded=false;
         navigator.serviceWorker.addEventListener("controllerchange",()=>{if(reloaded)return;reloaded=true;location.reload();});
       } catch(error){console.warn("Service worker registration failed",error);}

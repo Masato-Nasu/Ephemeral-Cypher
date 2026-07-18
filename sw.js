@@ -1,12 +1,11 @@
-/* Ephemeral Cypher SW v2.0.1 */
-const CACHE = "ephemeral-cypher-201";
+/* Ephemeral Cypher SW v2.1.0 */
+const CACHE = "ephemeral-cypher-210";
 const ASSETS = [
   "./",
   "./index.html",
   "./manifest.json",
   "./icon-192.png",
-  "./icon-512.png",
-  "./screenshot.png"
+  "./icon-512.png"
 ];
 
 self.addEventListener("install", event => {

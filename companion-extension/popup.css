@@ -1,0 +1,19 @@
+:root{color-scheme:dark;--bg:#09090c;--panel:#14141b;--text:#f5f2eb;--muted:#9998a3;--line:rgba(255,255,255,.12);--accent:#d8c8ff;--good:#bce9cb;--bad:#ffb3b6}
+*{box-sizing:border-box}
+body{margin:0;width:350px;background:radial-gradient(circle at 8% 0%,rgba(128,104,192,.16),transparent 18rem),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif}
+.card{padding:20px}
+.brand{display:flex;gap:12px;align-items:flex-start}
+.sigil{width:40px;height:40px;flex:0 0 auto;border:1px solid var(--line);border-radius:13px;background:linear-gradient(135deg,rgba(255,255,255,.12),transparent 44%),linear-gradient(315deg,rgba(216,200,255,.18),transparent 48%),#111117;position:relative}
+.sigil::before,.sigil::after{content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:1px solid rgba(235,228,255,.72)}
+.sigil::before{width:16px;height:21px;border-radius:9px}
+.sigil::after{width:5px;height:5px;border-radius:50%;background:rgba(235,228,255,.78)}
+.eyebrow{font-size:8px;letter-spacing:.20em;color:var(--accent);font-weight:800;margin:1px 0 4px}
+h1{margin:0;font-size:17px;line-height:1.05;letter-spacing:.055em;text-transform:uppercase;font-weight:650}h1 span{color:var(--muted);font-size:13px}
+.lead{margin:18px 0 12px;font-size:12px;color:var(--muted);line-height:1.65}
+.privacy{display:flex;gap:10px;padding:12px;border:1px solid var(--line);border-radius:15px;background:rgba(255,255,255,.035)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--good);box-shadow:0 0 0 5px rgba(188,233,203,.07);margin:5px 2px 0 1px;flex:0 0 auto}
+.privacy strong{font-size:10.5px}.privacy p{margin:4px 0 0;color:var(--muted);font-size:9.5px;line-height:1.55}
+button{width:100%;margin-top:14px;min-height:45px;border:1px solid rgba(216,200,255,.38);border-radius:14px;background:linear-gradient(180deg,rgba(216,200,255,.22),rgba(176,155,226,.13));color:var(--text);font:inherit;font-size:11px;font-weight:800;letter-spacing:.06em;cursor:pointer}
+button:hover:not(:disabled){background:linear-gradient(180deg,rgba(216,200,255,.30),rgba(176,155,226,.18))}button:disabled{opacity:.45;cursor:not-allowed}
+.status{min-height:30px;margin:10px 2px 0;color:var(--muted);font-size:9.5px;line-height:1.55}.status.error{color:var(--bad)}.status.good{color:var(--good)}
+.foot{margin:8px 2px 0;color:#5f5e69;font:8px ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.07em}

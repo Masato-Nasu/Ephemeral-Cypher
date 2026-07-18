@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ephemeral Cypher Companion</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main class="card">
+    <div class="brand">
+      <div class="sigil" aria-hidden="true"></div>
+      <div>
+        <div class="eyebrow">PAGE FINGERPRINT</div>
+        <h1>Ephemeral Cypher<br><span>Companion</span></h1>
+      </div>
+    </div>
+
+    <p class="lead">今見ているページを、その場で鍵素材にします。</p>
+
+    <div class="privacy">
+      <span class="dot"></span>
+      <div>
+        <strong>URLと本文は送信しません</strong>
+        <p>ページ内で正規化とSHA-256を行い、32バイトの指紋だけをEphemeral Cypherへ渡します。</p>
+      </div>
+    </div>
+
+    <button id="usePage" type="button">このページを鍵にする</button>
+    <p id="status" class="status" role="status">ボタンを押したページだけを読み取ります。</p>
+    <p class="foot">activeTab · scripting · no &lt;all_urls&gt;</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>
