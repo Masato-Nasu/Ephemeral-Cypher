@@ -1,0 +1,932 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#E7E3D8" />
+  <meta name="color-scheme" content="light" />
+  <meta name="description" content="Web pages captured by a privacy-preserving Companion, saved HTML, and images become ephemeral key materials for client-side encryption." />
+  <link rel="manifest" href="./manifest.json?v=210" />
+  <link rel="icon" href="./icon-192.png" />
+  <link rel="apple-touch-icon" href="./icon-192.png" />
+  <title>Ephemeral Cypher</title>
+  <style>
+    :root{
+      --bg:#E7E3D8;
+      --bg-soft:#EDEAE0;
+      --panel:#EDEAE0;
+      --panel-solid:#EDEAE0;
+      --panel-2:#E2DED1;
+      --field:#F3F1E8;
+      --text:#211F1A;
+      --muted:#7B7666;
+      --muted-2:#A19B8A;
+      --line:rgba(33,31,26,.16);
+      --line-strong:rgba(33,31,26,.34);
+      --accent:#B5372A;
+      --accent-2:#93291F;
+      --accent-soft:rgba(181,55,42,.08);
+      --good:#37714A;
+      --good-soft:rgba(55,113,74,.10);
+      --bad:#B5372A;
+      --bad-soft:rgba(181,55,42,.10);
+      --warn:#96690F;
+      --warn-soft:rgba(150,105,15,.10);
+      --radius-xl:6px;
+      --radius-lg:4px;
+      --radius-md:3px;
+      --shadow:0 1px 0 rgba(33,31,26,.05);
+    }
+    *{box-sizing:border-box}
+    html{min-height:100%;background:var(--bg)}
+    body{
+      min-height:100%;
+      margin:0;
+      color:var(--text);
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI","Noto Sans JP","Hiragino Sans","Yu Gothic UI",sans-serif;
+      background:var(--bg);
+      letter-spacing:.01em;
+    }
+    body::before{
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      opacity:.45;
+      background-image:
+        linear-gradient(rgba(33,31,26,.035) 1px,transparent 1px);
+      background-size:100% 34px;
+      mask-image:linear-gradient(to bottom,black,transparent 85%);
+    }
+    button,input,textarea{font:inherit}
+    button{color:inherit}
+    .app{
+      width:min(1180px,100%);
+      margin:0 auto;
+      padding:32px 18px 46px;
+      position:relative;
+    }
+    .topbar{
+      display:flex;
+      align-items:flex-start;
+      justify-content:space-between;
+      gap:24px;
+      margin:0 2px 24px;
+    }
+    .brand{display:flex;gap:15px;align-items:flex-start;min-width:0}
+    .sigil{
+      width:43px;height:43px;flex:0 0 auto;
+      border:1px solid var(--line-strong);
+      border-radius:15px;
+      background:var(--field);
+      box-shadow:none;
+      position:relative;
+      overflow:hidden;
+    }
+    .sigil::before,.sigil::after{
+      content:"";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+      border:1.5px solid rgba(181,55,42,.85);
+    }
+    .sigil::before{width:17px;height:23px;border-radius:10px 10px 8px 8px}
+    .sigil::after{width:5px;height:5px;border-radius:50%;background:rgba(181,55,42,.88)}
+    .eyebrow{
+      margin:0 0 5px;
+      color:var(--accent);
+      font-size:10px;
+      font-weight:700;
+      letter-spacing:.22em;
+      text-transform:uppercase;
+    }
+    h1{
+      margin:0;
+      font-family:"Avenir Next","Helvetica Neue",Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI","Noto Sans JP",sans-serif;
+      font-size:clamp(23px,2.8vw,33px);
+      font-weight:650;
+      letter-spacing:.075em;
+      line-height:1.08;
+      text-transform:uppercase;
+    }
+    .subtitle{
+      max-width:720px;
+      margin:9px 0 0;
+      color:var(--muted);
+      font-size:13px;
+      line-height:1.7;
+    }
+    .language{
+      display:flex;
+      padding:4px;
+      border:1px solid var(--line);
+      border-radius:999px;
+      background:var(--field);
+    }
+    .language button{
+      appearance:none;border:0;background:transparent;
+      color:var(--muted);border-radius:999px;
+      min-width:56px;padding:8px 12px;
+      cursor:pointer;font-size:11px;font-weight:700;
+      letter-spacing:.04em;
+    }
+    .language button.active{background:var(--text);color:var(--bg)}
+    .shell{
+      border:1px solid var(--line);
+      border-radius:var(--radius-xl);
+      background:var(--panel);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .intro-strip{
+      min-height:58px;
+      display:flex;align-items:center;justify-content:space-between;gap:18px;
+      padding:14px 20px;
+      border-bottom:1px solid var(--line);
+      background:var(--panel-2);
+    }
+    .state-wrap{display:flex;align-items:center;gap:10px;min-width:0}
+    .state-dot{width:8px;height:8px;border-radius:50%;background:var(--muted-2);box-shadow:0 0 0 5px rgba(33,31,26,.05)}
+    .state-dot.working{background:var(--accent);animation:pulse 1.2s infinite}
+    .state-dot.good{background:var(--good)}
+    .state-dot.bad{background:var(--bad)}
+    .state-dot.warn{background:var(--warn)}
+    @keyframes pulse{50%{opacity:.35;transform:scale(.8)}}
+    .state-label{font-size:10px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+    .state-message{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .privacy-note{font-size:10px;color:var(--muted-2);text-align:right;line-height:1.5}
+    .workspace{
+      display:grid;
+      grid-template-columns:minmax(0,.86fr) minmax(0,1.14fr);
+      min-height:650px;
+    }
+    .keys-panel,.message-panel{padding:24px}
+    .keys-panel{border-right:1px solid var(--line);background:var(--panel)}
+    .panel-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:17px}
+    .panel-index{font-size:10px;color:var(--accent);letter-spacing:.16em;font-weight:800}
+    .panel-title{margin:4px 0 0;font-size:16px;font-weight:650;letter-spacing:-.01em}
+    .panel-note{font-size:10px;color:var(--muted-2);text-align:right;line-height:1.5}
+    .material-list{display:grid;gap:12px}
+    .material{
+      border:1px solid var(--line);
+      border-radius:var(--radius-lg);
+      background:var(--field);
+      overflow:hidden;
+      transition:border-color .18s ease,background .18s ease,transform .18s ease;
+    }
+    .material:focus-within{border-color:rgba(181,55,42,.45)}
+    .material.active{border-color:rgba(181,55,42,.55)}
+    .material-head{display:flex;align-items:center;gap:12px;padding:13px 14px 9px}
+    .material-icon{
+      width:30px;height:30px;border:1px solid var(--line);border-radius:10px;
+      display:grid;place-items:center;color:var(--accent);font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12px;
+      background:var(--accent-soft);
+    }
+    .material-title{font-size:12px;font-weight:700}
+    .material-sub{font-size:10px;color:var(--muted-2);margin-top:2px}
+    .material-body{padding:0 14px 14px}
+    .url-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+    .companion-box{
+      display:flex;align-items:center;gap:11px;min-height:58px;padding:11px 12px;
+      border:1px solid var(--line);border-radius:var(--radius-lg);background:var(--panel-2);
+    }
+    .companion-mark{
+      width:32px;height:32px;flex:0 0 auto;border:1px solid var(--line-strong);border-radius:11px;
+      display:grid;place-items:center;color:var(--accent);background:var(--accent-soft);font-size:13px;
+    }
+    .companion-copy{min-width:0;flex:1}
+    .companion-state{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--text)}
+    .companion-detail{margin-top:3px;font-size:9.5px;line-height:1.55;color:var(--muted-2);word-break:break-word}
+    .companion-box.connected{border-color:rgba(181,55,42,.55);background:var(--accent-soft)}
+    .companion-box.connected .companion-mark{background:rgba(181,55,42,.14)}
+    input[type="url"],textarea{
+      width:100%;border:1px solid var(--line-strong);border-radius:var(--radius-md);
+      background:var(--field);color:var(--text);outline:none;
+      transition:border-color .16s ease,box-shadow .16s ease,background .16s ease;
+    }
+    input[type="url"]{height:45px;padding:0 13px;font-size:12px}
+    input::placeholder,textarea::placeholder{color:#ABA492}
+    input:focus,textarea:focus{border-color:rgba(181,55,42,.60);box-shadow:0 0 0 3px rgba(181,55,42,.10);background:#F8F6EE}
+    input:disabled{opacity:.42;cursor:not-allowed}
+    .icon-button{
+      appearance:none;width:45px;height:45px;border:1px solid var(--line);border-radius:14px;
+      background:var(--field);cursor:pointer;color:var(--muted);font-size:16px;
+    }
+    .icon-button:hover{background:var(--panel-2);color:var(--text)}
+    .or-line{display:flex;align-items:center;gap:10px;margin:11px 0;color:var(--muted-2);font-size:9px;letter-spacing:.12em;text-transform:uppercase}
+    .or-line::before,.or-line::after{content:"";height:1px;flex:1;background:var(--line)}
+    .file-row{display:flex;gap:9px;align-items:center;min-width:0}
+    .file-picker{
+      position:relative;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+      height:42px;padding:0 13px;border:1px solid var(--line-strong);border-radius:var(--radius-lg);
+      background:var(--field);cursor:pointer;font-size:11px;font-weight:700;white-space:nowrap;
+    }
+    .file-picker:hover{background:var(--panel-2)}
+    .file-picker input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+    .file-name{min-width:0;flex:1;color:var(--muted);font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .tiny-clear{appearance:none;border:0;background:transparent;color:var(--muted-2);font-size:16px;cursor:pointer;padding:7px}
+    .tiny-clear:hover{color:var(--text)}
+    .key-summary{
+      margin-top:14px;padding:13px 14px;border-radius:16px;
+      border:1px dashed var(--line-strong);background:transparent;
+    }
+    .summary-line{display:flex;justify-content:space-between;gap:14px;font-size:10px;color:var(--muted)}
+    .summary-line strong{color:var(--text);font-weight:650;text-align:right}
+    .summary-line+.summary-line{margin-top:8px}
+    .message-panel{display:flex;flex-direction:column;min-width:0}
+    .mode-tabs{
+      display:flex;gap:4px;padding:3px;border:1px solid var(--line-strong);border-radius:var(--radius-lg);background:var(--field)
+    }
+    .mode-tabs button{
+      appearance:none;border:0;background:transparent;border-radius:11px;padding:8px 12px;
+      color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.08em;cursor:pointer;
+    }
+    .mode-tabs button.active{color:var(--bg);background:var(--text)}
+    .editor-label{display:flex;justify-content:space-between;gap:14px;align-items:center;margin:16px 2px 8px}
+    .editor-label span:first-child{font-size:11px;color:var(--muted);font-weight:700}
+    .editor-tools{display:flex;align-items:center;gap:8px;min-width:0}
+    .text-file-picker{
+      appearance:none;font:inherit;position:relative;display:inline-flex;align-items:center;justify-content:center;
+      min-height:30px;padding:0 10px;border:1px solid var(--line);border-radius:10px;
+      background:var(--field);color:var(--muted);cursor:pointer;
+      font-size:9px;font-weight:800;letter-spacing:.07em;white-space:nowrap;
+    }
+    .text-file-picker:hover{background:var(--panel-2);color:var(--text)}
+    .format-hint{font-size:9px;color:var(--muted-2);font-family:ui-monospace,SFMono-Regular,Consolas,monospace}
+    .message-input,.result-output{
+      resize:vertical;padding:15px 16px;line-height:1.7;font-size:13px;
+      font-family:ui-monospace,SFMono-Regular,Consolas,"Noto Sans Mono CJK JP",monospace;
+    }
+    .message-input{min-height:215px;flex:1 1 auto}
+    .result-output{min-height:165px;background:var(--panel-2)}
+    .action-row{display:flex;gap:9px;flex-wrap:wrap;margin:14px 0 2px}
+    .button{
+      appearance:none;border:1px solid var(--line-strong);border-radius:var(--radius-md);
+      min-height:45px;padding:0 17px;background:var(--field);
+      font-size:11px;font-weight:800;letter-spacing:.06em;cursor:pointer;
+      transition:transform .15s ease,background .15s ease,border-color .15s ease,opacity .15s ease;
+    }
+    .button:hover:not(:disabled){transform:translateY(-1px);background:var(--panel-2)}
+    .button.primary{background:var(--accent);border-color:var(--accent);color:#F3F1E8}
+    .button.primary:hover:not(:disabled){background:var(--accent-2);border-color:var(--accent-2)}
+    .button.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+    .button:disabled{opacity:.28;cursor:not-allowed}
+    .copy-inline{margin-left:auto}
+    .result-wrap{position:relative}
+    .result-stamp{
+      position:absolute;right:13px;top:12px;z-index:1;
+      padding:5px 8px;border:1px solid var(--line);border-radius:999px;
+      font-size:8px;font-weight:800;letter-spacing:.12em;color:var(--muted);background:rgba(231,227,216,.92);
+      pointer-events:none;
+    }
+    .footer{
+      display:flex;justify-content:space-between;gap:20px;align-items:flex-start;
+      margin-top:17px;padding:0 3px;color:var(--muted-2);font-size:9px;line-height:1.65;
+    }
+    .footer a{color:inherit;text-underline-offset:3px}
+    .legacy-note{max-width:630px}
+    .noscript{padding:18px;background:var(--bad-soft);color:var(--accent-2);text-align:center}
+    @media(max-width:860px){
+      .workspace{grid-template-columns:1fr}.keys-panel{border-right:0;border-bottom:1px solid var(--line)}
+      .message-input{min-height:190px}.privacy-note{display:none}
+    }
+    @media(max-width:600px){
+      .app{padding:20px 10px 30px}.topbar{align-items:center;margin-bottom:17px}.sigil{width:39px;height:39px}
+      .subtitle{font-size:11px}.language button{min-width:48px;padding:7px 9px}.intro-strip{padding:12px 15px}
+      .keys-panel,.message-panel{padding:17px}.panel-note{display:none}.copy-inline{margin-left:0}.button{flex:1 1 auto}
+      .footer{display:block}.footer>*+*{margin-top:8px}.state-message{font-size:10px}
+    }
+  </style>
+</head>
+<body>
+  <noscript><div class="noscript">JavaScript is required / JavaScriptを有効にしてください。</div></noscript>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="sigil" aria-hidden="true"></div>
+        <div>
+          <p class="eyebrow">Transient key instrument</p>
+          <h1 id="title">Ephemeral Cypher</h1>
+          <p class="subtitle" id="subtitle"></p>
+        </div>
+      </div>
+      <div class="language" aria-label="Language">
+        <button id="btnJa" type="button">日本語</button>
+        <button id="btnEn" type="button">EN</button>
+      </div>
+    </header>
+
+    <section class="shell" aria-label="Ephemeral Cypher workspace">
+      <div class="intro-strip" aria-live="polite">
+        <div class="state-wrap">
+          <span class="state-dot" id="stateDot"></span>
+          <span class="state-label" id="stateLabel">READY</span>
+          <span class="state-message" id="stateMessage"></span>
+        </div>
+        <div class="privacy-note" id="privacyNote"></div>
+      </div>
+
+      <div class="workspace">
+        <section class="keys-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-index">01 / MATERIAL</div>
+              <h2 class="panel-title" id="keysTitle">鍵素材</h2>
+            </div>
+            <div class="panel-note" id="keysNote"></div>
+          </div>
+
+          <div class="material-list">
+            <article class="material" id="pageMaterial">
+              <div class="material-head">
+                <div class="material-icon">↗</div>
+                <div>
+                  <div class="material-title" id="pageTitle">Webページ / HTML</div>
+                  <div class="material-sub" id="pageSub"></div>
+                </div>
+              </div>
+              <div class="material-body">
+                <div class="url-row" id="androidUrlRow" style="margin-bottom:10px">
+                  <input id="urlInput" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://example.com/page" />
+                  <button class="button" id="captureUrlButton" type="button" style="padding:0 14px;min-width:92px">ページを鍵にする</button>
+                </div>
+                <div class="companion-box" id="companionBox">
+                  <div class="companion-mark">◎</div>
+                  <div class="companion-copy">
+                    <div class="companion-state" id="companionState">Companionでページを指す</div>
+                    <div class="companion-detail" id="companionDetail"></div>
+                  </div>
+                  <button class="tiny-clear" id="clearCompanion" type="button" aria-label="Clear captured page">×</button>
+                </div>
+                <div class="or-line" id="orLabel">or local HTML</div>
+                <div class="file-row">
+                  <label class="file-picker"><span id="pickHtml">HTMLを選択</span><input id="htmlFile" type="file" accept=".html,.htm,text/html" /></label>
+                  <span class="file-name" id="htmlName"></span>
+                  <button class="tiny-clear" id="clearHtml" type="button" aria-label="Clear HTML">×</button>
+                </div>
+              </div>
+            </article>
+
+            <article class="material" id="imageMaterial">
+              <div class="material-head">
+                <div class="material-icon">◫</div>
+                <div>
+                  <div class="material-title" id="imageTitle">画像</div>
+                  <div class="material-sub" id="imageSub"></div>
+                </div>
+              </div>
+              <div class="material-body">
+                <div class="file-row">
+                  <label class="file-picker"><span id="pickImage">画像を選択</span><input id="imgFile" type="file" accept="image/*" /></label>
+                  <span class="file-name" id="imgName"></span>
+                  <button class="tiny-clear" id="clearImage" type="button" aria-label="Clear image">×</button>
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <div class="key-summary">
+            <div class="summary-line"><span id="selectedLabel">選択中</span><strong id="selectedSummary">なし</strong></div>
+            <div class="summary-line"><span id="networkLabel">通信</span><strong id="networkSummary">なし</strong></div>
+          </div>
+        </section>
+
+        <section class="message-panel">
+          <div class="panel-head">
+            <div>
+              <div class="panel-index">02 / ENVELOPE</div>
+              <h2 class="panel-title" id="messageTitle">封書</h2>
+            </div>
+            <div class="mode-tabs" role="tablist" aria-label="Mode">
+              <button id="modeEncrypt" class="active" type="button" role="tab" aria-selected="true">ENCRYPT</button>
+              <button id="modeDecrypt" type="button" role="tab" aria-selected="false">DECRYPT</button>
+            </div>
+          </div>
+
+          <div class="editor-label">
+            <span id="inputLabel">メッセージ</span>
+            <div class="editor-tools">
+              <button class="text-file-picker" id="loadTextButton" type="button"><span id="loadTextLabel">TXTを読み込む</span></button>
+              <input id="cipherFile" type="file" accept=".txt,text/plain" hidden />
+              <span class="format-hint" id="inputHint">PLAIN TEXT</span>
+            </div>
+          </div>
+          <textarea class="message-input" id="messageInput" spellcheck="false"></textarea>
+
+          <div class="action-row">
+            <button class="button primary" id="runButton" type="button" disabled>暗号化する</button>
+            <button class="button" id="swapButton" type="button">結果を入力へ</button>
+            <button class="button ghost" id="clearAll" type="button">クリア</button>
+          </div>
+
+          <div class="editor-label">
+            <span id="resultLabel">結果</span>
+            <span class="format-hint" id="resultHint">EC2 / AES-GCM</span>
+          </div>
+          <div class="result-wrap">
+            <span class="result-stamp" id="resultStamp">EMPTY</span>
+            <textarea class="result-output" id="resultOutput" readonly spellcheck="false"></textarea>
+          </div>
+          <div class="action-row">
+            <button class="button" id="saveButton" type="button" disabled>TXTで保存</button>
+            <button class="button copy-inline" id="copyButton" type="button" disabled>結果をコピー</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <footer class="footer">
+      <div class="legacy-note" id="legacyNote"></div>
+      <div>Ephemeral Cypher · EC2 · <span id="versionLabel">v2.1.0</span></div>
+    </footer>
+  </main>
+
+<script>
+(() => {
+  "use strict";
+
+  const VERSION = "2.1.0";
+  const te = new TextEncoder();
+  const td = new TextDecoder();
+
+  const STR = {
+    ja: {
+      title:"Ephemeral Cypher",
+      subtitle:"公開されている素材を指し示し、その一時的な姿を鍵にする。暗号化と復号は端末内で行われます。",
+      privacy:"第三者中継なし · Companionはページ指紋だけを渡します",
+      keysTitle:"鍵素材", keysNote:"1つ以上を選択 · 組み合わせ可能",
+      pageTitle:"Webページ / HTML", pageSub:"URLを入力してアプリ内ブラウザでページを開くか、保存HTMLを使います", urlAction:"ページを鍵にする",
+      or:"or local HTML", pickHtml:"HTMLを選択", companionWaiting:"Companionでページを指す", companionWaitingDetail:"鍵にしたいページでChrome拡張『Ephemeral Cypher Companion』を開き、このページを鍵にするを押します。", companionReady:"WEB PAGE CAPTURED", companionReadyDetail:"ページ指紋 {fp} を端末内で受け取りました。URLと本文は送信されません。",
+      imageTitle:"画像", imageSub:"見た目から知覚ハッシュを生成します", pickImage:"画像を選択",
+      selected:"選択中", none:"なし", page:"ページ", image:"画像",
+      network:"通信", networkNone:"なし（端末内のみ）",
+      messageTitle:"封書", inputMessage:"メッセージ", inputCipher:"暗号文",
+      plainHint:"PLAIN TEXT", cipherHint:"EC2 / EC1 / LEGACY",
+      messagePlaceholder:"暗号化する文章を入力…", cipherPlaceholder:"EC2: から始まる暗号文、または旧形式を貼り付け…",
+      encrypt:"暗号化する", decrypt:"復号する", swap:"結果を入力へ", clear:"クリア",
+      result:"結果", copy:"結果をコピー", save:"TXTで保存", loadText:"TXTを読み込む", empty:"EMPTY", sealed:"SEALED", opened:"OPENED",
+      ready:"READY", readyMsg:"鍵素材とメッセージを用意してください。",
+      needKey:"KEY REQUIRED", needKeyMsg:"鍵素材を1つ以上選択してください。",
+      needMessage:"MESSAGE REQUIRED", needMessageMsg:"メッセージまたは暗号文を入力してください。",
+      working:"WORKING", workingEncrypt:"鍵を導出し、封書を閉じています…", workingDecrypt:"素材に問い、封書を開いています…",
+      encrypted:"SEALED", encryptedMsg:"EC2形式で暗号化しました。",
+      decrypted:"GOOD", decryptedMsg:"鍵素材が一致しました。封書を開きました。",
+      dead:"OOPS", deadMsg:"素材には到達しましたが、鍵が一致しません。内容が変化した可能性があります。",
+      invalid:"INVALID", invalidMsg:"暗号文の形式を読み取れません。",
+      error:"ERROR", errorMsg:"処理に失敗しました。ブラウザの対応状況と素材を確認してください。",
+      copied:"COPIED", copiedMsg:"結果をコピーしました。", saved:"SAVED", savedMsg:"結果をTXTで保存しました。", loaded:"LOADED", loadedMsg:"暗号文をTXTから読み込みました。",
+      legacy:"新しい封書は EC2（HKDF + AES-GCM）です。EC1: および無印の旧暗号文も復号できます。",
+      legacyKeyRequired:"旧暗号文には、Webページ / HTML または画像の鍵素材が必要です。"
+    },
+    en: {
+      title:"Ephemeral Cypher",
+      subtitle:"Point to public material and use its temporary form as a key. Encryption and decryption happen on this device.",
+      privacy:"No third-party relay · Companion passes only a page fingerprint",
+      keysTitle:"Key materials", keysNote:"Choose one or more · combinations allowed",
+      pageTitle:"Web page / HTML", pageSub:"Enter a URL to open it in the in-app browser, or use saved HTML", urlAction:"USE PAGE",
+      or:"or local HTML", pickHtml:"Choose HTML", companionWaiting:"Point with Companion", companionWaitingDetail:"On the page you want to use, open the Ephemeral Cypher Companion extension and choose Use this page as key.", companionReady:"WEB PAGE CAPTURED", companionReadyDetail:"Page fingerprint {fp} was received on-device. The URL and page text are not sent.",
+      imageTitle:"Image", imageSub:"A perceptual hash is derived from its appearance", pickImage:"Choose image",
+      selected:"Selected", none:"None", page:"Page", image:"Image",
+      network:"Network", networkNone:"None (on-device only)",
+      messageTitle:"Envelope", inputMessage:"Message", inputCipher:"Ciphertext",
+      plainHint:"PLAIN TEXT", cipherHint:"EC2 / EC1 / LEGACY",
+      messagePlaceholder:"Write a message to seal…", cipherPlaceholder:"Paste EC2:, EC1:, or legacy ciphertext…",
+      encrypt:"Encrypt", decrypt:"Decrypt", swap:"Move result to input", clear:"Clear",
+      result:"Result", copy:"Copy result", save:"Save .txt", loadText:"Load .txt", empty:"EMPTY", sealed:"SEALED", opened:"OPENED",
+      ready:"READY", readyMsg:"Prepare key material and a message.",
+      needKey:"KEY REQUIRED", needKeyMsg:"Select at least one key material.",
+      needMessage:"MESSAGE REQUIRED", needMessageMsg:"Enter a message or ciphertext.",
+      working:"WORKING", workingEncrypt:"Deriving the key and sealing the envelope…", workingDecrypt:"Asking the material and opening the envelope…",
+      encrypted:"SEALED", encryptedMsg:"Encrypted in EC2 format.",
+      decrypted:"GOOD", decryptedMsg:"The key material matched. The envelope is open.",
+      dead:"OOPS", deadMsg:"The material answered, but the key did not match. Its content may have changed.",
+      invalid:"INVALID", invalidMsg:"The ciphertext format could not be read.",
+      error:"ERROR", errorMsg:"Processing failed. Check browser support and the selected material.",
+      copied:"COPIED", copiedMsg:"Result copied.", saved:"SAVED", savedMsg:"Result saved as a text file.", loaded:"LOADED", loadedMsg:"Ciphertext loaded from the text file.",
+      legacy:"New envelopes use EC2 (HKDF + AES-GCM). EC1: and unprefixed legacy ciphertext remain decryptable.",
+      legacyKeyRequired:"Legacy ciphertext requires a web page / HTML or image key material."
+    }
+  };
+
+  const $ = id => document.getElementById(id);
+  const els = {
+    title:$("title"),subtitle:$("subtitle"),btnJa:$("btnJa"),btnEn:$("btnEn"),privacyNote:$("privacyNote"),
+    keysTitle:$("keysTitle"),keysNote:$("keysNote"),pageTitle:$("pageTitle"),pageSub:$("pageSub"),urlInput:$("urlInput"),captureUrlButton:$("captureUrlButton"),orLabel:$("orLabel"),pickHtml:$("pickHtml"),
+    imageTitle:$("imageTitle"),imageSub:$("imageSub"),pickImage:$("pickImage"),
+    selectedLabel:$("selectedLabel"),selectedSummary:$("selectedSummary"),networkLabel:$("networkLabel"),networkSummary:$("networkSummary"),
+    messageTitle:$("messageTitle"),modeEncrypt:$("modeEncrypt"),modeDecrypt:$("modeDecrypt"),inputLabel:$("inputLabel"),inputHint:$("inputHint"),
+    messageInput:$("messageInput"),cipherFile:$("cipherFile"),loadTextButton:$("loadTextButton"),loadTextLabel:$("loadTextLabel"),runButton:$("runButton"),swapButton:$("swapButton"),clearAll:$("clearAll"),resultLabel:$("resultLabel"),resultHint:$("resultHint"),
+    resultOutput:$("resultOutput"),resultStamp:$("resultStamp"),copyButton:$("copyButton"),saveButton:$("saveButton"),legacyNote:$("legacyNote"),versionLabel:$("versionLabel"),
+    stateDot:$("stateDot"),stateLabel:$("stateLabel"),stateMessage:$("stateMessage"),
+    companionBox:$("companionBox"),companionState:$("companionState"),companionDetail:$("companionDetail"),clearCompanion:$("clearCompanion"),
+    htmlFile:$("htmlFile"),htmlName:$("htmlName"),clearHtml:$("clearHtml"),
+    imgFile:$("imgFile"),imgName:$("imgName"),clearImage:$("clearImage"),
+    pageMaterial:$("pageMaterial"),imageMaterial:$("imageMaterial")
+  };
+
+  let lang = (new URLSearchParams(location.search).get("lang") || "").toLowerCase();
+  if (!/^(ja|en)$/.test(lang)) lang = navigator.language?.toLowerCase().startsWith("ja") ? "ja" : "en";
+  let mode = "encrypt";
+  let stateTimer = null;
+  let companionPageHash = null;
+  const COMPANION_SESSION_KEY = "ephemeral-cypher-companion-page-hash";
+
+  function setState(label, message, kind="") {
+    clearTimeout(stateTimer);
+    els.stateLabel.textContent = label;
+    els.stateMessage.textContent = message;
+    els.stateDot.className = "state-dot" + (kind ? " " + kind : "");
+  }
+
+  function setTemporaryState(label, message, kind, ms=1500) {
+    setState(label,message,kind);
+    stateTimer = setTimeout(updateReadiness,ms);
+  }
+
+  function setLang(next) {
+    lang = next;
+    document.documentElement.lang = lang;
+    const t = STR[lang];
+    els.title.textContent=t.title; els.subtitle.textContent=t.subtitle; els.privacyNote.textContent=t.privacy;
+    els.keysTitle.textContent=t.keysTitle; els.keysNote.textContent=t.keysNote;
+    els.pageTitle.textContent=t.pageTitle; els.pageSub.textContent=t.pageSub; els.captureUrlButton.textContent=t.urlAction; els.orLabel.textContent=t.or; els.pickHtml.textContent=t.pickHtml;
+    els.imageTitle.textContent=t.imageTitle; els.imageSub.textContent=t.imageSub; els.pickImage.textContent=t.pickImage;
+    els.selectedLabel.textContent=t.selected; els.networkLabel.textContent=t.network;
+    els.messageTitle.textContent=t.messageTitle; els.resultLabel.textContent=t.result; els.copyButton.textContent=t.copy; els.saveButton.textContent=t.save; els.loadTextLabel.textContent=t.loadText;
+    els.swapButton.textContent=t.swap; els.clearAll.textContent=t.clear; els.legacyNote.textContent=t.legacy;
+    els.btnJa.classList.toggle("active",lang==="ja"); els.btnEn.classList.toggle("active",lang==="en");
+    updateModeUI(); updateSummary(); updateReadiness();
+  }
+
+  function setMode(next) {
+    mode=next;
+    updateModeUI();
+    updateReadiness();
+  }
+
+  function updateModeUI() {
+    const t=STR[lang];
+    const enc=mode==="encrypt";
+    els.modeEncrypt.classList.toggle("active",enc); els.modeDecrypt.classList.toggle("active",!enc);
+    els.modeEncrypt.setAttribute("aria-selected",String(enc)); els.modeDecrypt.setAttribute("aria-selected",String(!enc));
+    els.inputLabel.textContent=enc?t.inputMessage:t.inputCipher;
+    els.inputHint.textContent=enc?t.plainHint:t.cipherHint;
+    els.messageInput.placeholder=enc?t.messagePlaceholder:t.cipherPlaceholder;
+    els.runButton.textContent=enc?t.encrypt:t.decrypt;
+    els.resultHint.textContent=enc?"EC2 / AES-GCM":"PLAIN TEXT";
+  }
+
+  function selectedMaterials() {
+    return {
+      page:!!companionPageHash || !!els.htmlFile.files?.[0],
+      image:!!els.imgFile.files?.[0]
+    };
+  }
+
+  function fingerprintLabel(bytes) {
+    if(!bytes) return "";
+    return Array.from(bytes.slice(0,6),b=>b.toString(16).padStart(2,"0").toUpperCase()).join("") + "…";
+  }
+
+  function updateSummary() {
+    const t=STR[lang], m=selectedMaterials(), names=[];
+    if(m.page) names.push(t.page); if(m.image) names.push(t.image);
+    els.selectedSummary.textContent=names.length?names.join(" + "):t.none;
+    els.networkSummary.textContent=t.networkNone;
+    els.pageMaterial.classList.toggle("active",m.page); els.imageMaterial.classList.toggle("active",m.image);
+    const fp=fingerprintLabel(companionPageHash);
+    els.companionBox.classList.toggle("connected",!!companionPageHash);
+    els.companionState.textContent=companionPageHash?t.companionReady:t.companionWaiting;
+    els.companionDetail.textContent=companionPageHash?t.companionReadyDetail.replace("{fp}",fp):t.companionWaitingDetail;
+    els.clearCompanion.hidden=!companionPageHash;
+  }
+
+  function hasAnyKey() { const m=selectedMaterials(); return m.page||m.image; }
+
+  function updateReadiness() {
+    updateSummary();
+    const t=STR[lang], hasKey=hasAnyKey(), hasMsg=!!els.messageInput.value.trim();
+    els.runButton.disabled=!(hasKey&&hasMsg);
+    els.copyButton.disabled=!els.resultOutput.value;
+    els.saveButton.disabled=!els.resultOutput.value;
+    els.resultStamp.textContent=els.resultOutput.value ? (mode==="encrypt"?t.sealed:t.opened) : t.empty;
+    if(!hasKey) setState(t.needKey,t.needKeyMsg,"bad");
+    else if(!hasMsg) setState(t.needMessage,t.needMessageMsg,"warn");
+    else setState(t.ready,t.readyMsg,"");
+  }
+
+  function concatU8(...arrs) {
+    const total=arrs.reduce((n,a)=>n+(a?.length||0),0), out=new Uint8Array(total); let p=0;
+    for(const a of arrs){if(!a)continue;out.set(a,p);p+=a.length;} return out;
+  }
+  function u32be(n){const b=new Uint8Array(4);new DataView(b.buffer).setUint32(0,n,false);return b;}
+  async function sha256(u8){return new Uint8Array(await crypto.subtle.digest("SHA-256",u8));}
+  function randomBytes(n){const b=new Uint8Array(n);crypto.getRandomValues(b);return b;}
+  function b64enc(u8){let s="";for(let i=0;i<u8.length;i+=0x8000)s+=String.fromCharCode(...u8.subarray(i,i+0x8000));return btoa(s);}
+  function b64dec(s){const bin=atob(s),out=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)out[i]=bin.charCodeAt(i);return out;}
+  function b64urlDec(s){const clean=(s||"").replace(/-/g,"+").replace(/_/g,"/");return b64dec(clean+"=".repeat((4-clean.length%4)%4));}
+
+
+  function requestAndroidUrlCapture() {
+    const raw=(els.urlInput?.value||"").trim();
+    if(!raw) { els.urlInput?.focus(); return; }
+    setState("OPENING",lang==="ja"?"アプリ内ブラウザでページを開きます…":"Opening the page in the in-app browser…","working");
+    location.href="ephemeral://capture?url="+encodeURIComponent(raw);
+  }
+  els.captureUrlButton?.addEventListener("click",requestAndroidUrlCapture);
+  els.urlInput?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();requestAndroidUrlCapture();}});
+  window.setAndroidPageFingerprint = function(encoded) {
+    try {
+      const decoded=b64urlDec(encoded||"");
+      if(decoded.length!==32) throw new Error("invalid android page fingerprint");
+      sessionStorage.setItem(COMPANION_SESSION_KEY,encoded);
+      companionPageHash=decoded;
+      updateReadiness();
+      setTemporaryState(STR[lang].ready,lang==="ja"?"Webページを鍵素材として設定しました。":"The web page is now set as key material.","good");
+      return true;
+    } catch(error) {
+      console.warn("Could not set Android page fingerprint",error);
+      return false;
+    }
+  };
+
+  function loadCompanionMaterial() {
+    let encoded="";
+    try {
+      const params=new URLSearchParams(location.hash.startsWith("#")?location.hash.slice(1):location.hash);
+      encoded=params.get("ecpage")||"";
+      if(encoded) {
+        const decoded=b64urlDec(encoded);
+        if(decoded.length!==32) throw new Error("invalid companion fingerprint");
+        sessionStorage.setItem(COMPANION_SESSION_KEY,encoded);
+        companionPageHash=decoded;
+        history.replaceState(null,"",location.pathname+location.search);
+        return;
+      }
+    } catch(error) { console.warn("Invalid companion material",error); }
+    try {
+      encoded=sessionStorage.getItem(COMPANION_SESSION_KEY)||"";
+      if(encoded) {
+        const decoded=b64urlDec(encoded);
+        if(decoded.length===32) companionPageHash=decoded;
+      }
+    } catch(error) { console.warn("Could not restore companion material",error); }
+  }
+
+  function normalizeHTML(html) {
+    try {
+      const doc=new DOMParser().parseFromString(html,"text/html");
+      for(const sel of ["script","style","noscript"]) doc.querySelectorAll(sel).forEach(n=>n.remove());
+      const title=(doc.querySelector("title")?.textContent||"").trim();
+      const bodyText=doc.documentElement?.textContent||"";
+      return (title+"\n"+bodyText).replace(/\s+/g," ").trim().slice(0,200000);
+    } catch {
+      return (html||"").replace(/\s+/g," ").trim().slice(0,200000);
+    }
+  }
+
+  async function loadPageMaterial() {
+    const file=els.htmlFile.files?.[0];
+    if(file) return {pageBytes:te.encode(normalizeHTML(await file.text())),pageHash:null};
+    if(companionPageHash) return {pageBytes:null,pageHash:companionPageHash};
+    return {pageBytes:null,pageHash:null};
+  }
+
+  function buildCosTable(N){const table=Array.from({length:N},()=>new Float64Array(N));for(let u=0;u<N;u++)for(let x=0;x<N;x++)table[u][x]=Math.cos(((2*x+1)*u*Math.PI)/(2*N));return table;}
+  const COS32=buildCosTable(32);
+  function dct1d(vec,N){const out=new Float64Array(N);for(let u=0;u<N;u++){let sum=0;for(let x=0;x<N;x++)sum+=vec[x]*COS32[u][x];out[u]=(u===0?Math.sqrt(1/N):Math.sqrt(2/N))*sum;}return out;}
+  function dct2d(mat,N){const tmp=Array.from({length:N},()=>new Float64Array(N));for(let y=0;y<N;y++)tmp[y].set(dct1d(mat[y],N));const out=Array.from({length:N},()=>new Float64Array(N));for(let x=0;x<N;x++){const col=new Float64Array(N);for(let y=0;y<N;y++)col[y]=tmp[y][x];const d=dct1d(col,N);for(let y=0;y<N;y++)out[y][x]=d[y];}return out;}
+
+  async function imageToPHashBytes(file) {
+    const blobUrl=URL.createObjectURL(file);
+    try {
+      let bmp;
+      if("createImageBitmap" in window) bmp=await createImageBitmap(file);
+      else {const img=new Image();img.decoding="async";img.src=blobUrl;await new Promise((r,j)=>{img.onload=r;img.onerror=j;});bmp=img;}
+      const N=32,c=document.createElement("canvas");c.width=N;c.height=N;
+      const ctx=c.getContext("2d",{willReadFrequently:true});ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality="high";ctx.drawImage(bmp,0,0,N,N);
+      const data=ctx.getImageData(0,0,N,N).data,mat=Array.from({length:N},()=>new Float64Array(N));
+      for(let y=0;y<N;y++)for(let x=0;x<N;x++){const i=(y*N+x)*4;mat[y][x]=.299*data[i]+.587*data[i+1]+.114*data[i+2];}
+      const dct=dct2d(mat,N),vals=[];
+      for(let y=0;y<8;y++)for(let x=0;x<8;x++)if(x!==0||y!==0)vals.push(dct[y][x]);
+      vals.sort((a,b)=>a-b);const med=vals[Math.floor(vals.length/2)]||0,bytes=new Uint8Array(8);let bit=0;
+      for(let y=0;y<8;y++)for(let x=0;x<8;x++){const on=dct[y][x]>med?1:0;bytes[bit>>3]|=on<<(7-(bit&7));bit++;}
+      return bytes;
+    } finally { URL.revokeObjectURL(blobUrl); }
+  }
+
+  async function collectMaterials() {
+    const {pageBytes,pageHash}=await loadPageMaterial();
+    const imageFile=els.imgFile.files?.[0];
+    const imageHash=imageFile?await imageToPHashBytes(imageFile):null;
+    return {pageBytes,pageHash,imageHash};
+  }
+
+  async function resolvedPageHash(materials) {
+    if(materials.pageHash) return materials.pageHash;
+    if(materials.pageBytes) return await sha256(materials.pageBytes);
+    return null;
+  }
+
+  async function buildLegacyKeyBytes(salt) {
+    const materials=await collectMaterials();
+    const pageHash=await resolvedPageHash(materials);
+    if(!pageHash&&!materials.imageHash) return null;
+    const domainSep=te.encode("EC|1.1.2|");
+    return await sha256(concatU8(domainSep,pageHash||new Uint8Array(0),materials.imageHash||new Uint8Array(0),salt));
+  }
+
+  async function buildEC2Key(salt) {
+    const materials=await collectMaterials();
+    const pageHash=await resolvedPageHash(materials);
+    if(!pageHash&&!materials.imageHash) return null;
+    const parts=[te.encode("EphemeralCypher\0EC2\0")];
+    const add=(tag,value)=>{
+      if(!value)return;
+      const tagBytes=te.encode(tag+"\0");
+      parts.push(tagBytes,u32be(value.length),value);
+    };
+    add("page-visible-text-sha256",pageHash);
+    add("image-phash-64",materials.imageHash);
+    const ikmBytes=await sha256(concatU8(...parts));
+    const ikm=await crypto.subtle.importKey("raw",ikmBytes,"HKDF",false,["deriveKey"]);
+    return crypto.subtle.deriveKey(
+      {name:"HKDF",hash:"SHA-256",salt,info:te.encode("EphemeralCypher|EC2|AES-256-GCM")},
+      ikm,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]
+    );
+  }
+
+  async function importLegacyAes(keyBytes) {
+    return crypto.subtle.importKey("raw",keyBytes,{name:"AES-GCM",length:256},false,["encrypt","decrypt"]);
+  }
+
+  function parseCiphertext(input) {
+    // 他アプリ経由のTXTで混入しうる不可視文字(ゼロ幅・BOM)を除去してから解釈する。
+    // base64本体の英数記号には影響せず、従来復号できた入力の互換は保たれる。
+    const value=(input||"").replace(/[\u200B\u200C\u200D\uFEFF]/g,"").trim();
+    let version="legacy",payload=value;
+    if(value.startsWith("EC2:")){version="ec2";payload=value.slice(4);}
+    else if(value.startsWith("EC1:")){version="legacy";payload=value.slice(4);}
+    payload=payload.replace(/\s+/g,"");
+    if(!payload) throw new Error("bad-format");
+    let packed;try{packed=b64dec(payload);}catch{throw new Error("bad-format");}
+    if(packed.length<44) throw new Error("bad-format");
+    return {version,salt:packed.slice(0,16),iv:packed.slice(16,28),ct:packed.slice(28)};
+  }
+
+  async function encryptEC2(plain) {
+    const salt=randomBytes(16),iv=randomBytes(12),key=await buildEC2Key(salt);
+    if(!key)return null;
+    const ct=new Uint8Array(await crypto.subtle.encrypt({name:"AES-GCM",iv,additionalData:te.encode("EphemeralCypher|EC2")},key,te.encode(plain)));
+    return "EC2:"+b64enc(concatU8(salt,iv,ct));
+  }
+
+  async function decryptAny(input) {
+    const parsed=parseCiphertext(input);
+    let key,algorithm={name:"AES-GCM",iv:parsed.iv};
+    if(parsed.version==="ec2") {
+      key=await buildEC2Key(parsed.salt);algorithm.additionalData=te.encode("EphemeralCypher|EC2");
+    } else {
+      const keyBytes=await buildLegacyKeyBytes(parsed.salt);key=keyBytes?await importLegacyAes(keyBytes):null;
+    }
+    if(!key) throw new Error(parsed.version==="legacy" ? "legacy-key-required" : "no-key");
+    try {
+      const plain=await crypto.subtle.decrypt(algorithm,key,parsed.ct);
+      return {ok:true,text:td.decode(new Uint8Array(plain)),version:parsed.version};
+    } catch { return {ok:false,reason:"mismatch"}; }
+  }
+
+  async function run() {
+    const t=STR[lang],input=els.messageInput.value.trim();
+    if(!hasAnyKey()||!input){updateReadiness();return;}
+    els.runButton.disabled=true;
+    setState(t.working,mode==="encrypt"?t.workingEncrypt:t.workingDecrypt,"working");
+    try {
+      if(mode==="encrypt") {
+        const out=await encryptEC2(input);els.resultOutput.value=out||"";
+        setState(t.encrypted,t.encryptedMsg,"good");els.resultStamp.textContent=t.sealed;
+      } else {
+        const res=await decryptAny(input);
+        if(!res.ok){els.resultOutput.value="";setState(t.dead,t.deadMsg,"bad");els.resultStamp.textContent=t.empty;}
+        else {els.resultOutput.value=res.text;setState(t.decrypted,t.decryptedMsg,"good");els.resultStamp.textContent=t.opened;}
+      }
+    } catch(error) {
+      console.error(error);
+      els.resultOutput.value="";
+      if(error.message==="bad-format") setState(t.invalid,t.invalidMsg,"bad");
+      else if(error.message==="legacy-key-required") setState(t.needKey,t.legacyKeyRequired,"bad");
+      else setState(t.error,t.errorMsg,"bad");
+      els.resultStamp.textContent=t.empty;
+    } finally {
+      els.runButton.disabled=!(hasAnyKey()&&!!els.messageInput.value.trim());
+      els.copyButton.disabled=!els.resultOutput.value;
+      els.saveButton.disabled=!els.resultOutput.value;
+    }
+  }
+
+  els.btnJa.addEventListener("click",()=>setLang("ja"));els.btnEn.addEventListener("click",()=>setLang("en"));
+  els.modeEncrypt.addEventListener("click",()=>setMode("encrypt"));els.modeDecrypt.addEventListener("click",()=>setMode("decrypt"));
+  els.clearCompanion.addEventListener("click",()=>{companionPageHash=null;sessionStorage.removeItem(COMPANION_SESSION_KEY);updateReadiness();});
+  els.htmlFile.addEventListener("change",()=>{const f=els.htmlFile.files?.[0];els.htmlName.textContent=f?f.name:"";if(f){companionPageHash=null;sessionStorage.removeItem(COMPANION_SESSION_KEY);}updateReadiness();});
+  els.clearHtml.addEventListener("click",()=>{els.htmlFile.value="";els.htmlName.textContent="";updateReadiness();});
+  els.imgFile.addEventListener("change",()=>{const f=els.imgFile.files?.[0];els.imgName.textContent=f?f.name:"";updateReadiness();});
+  els.clearImage.addEventListener("click",()=>{els.imgFile.value="";els.imgName.textContent="";updateReadiness();});
+  els.messageInput.addEventListener("input",updateReadiness);
+  els.runButton.addEventListener("click",run);
+
+  els.loadTextButton?.addEventListener("click",()=>{
+    const isAndroidApp = location.host === "app.local" && /Android/i.test(navigator.userAgent || "");
+    if(isAndroidApp) {
+      location.href="ephemeral://picktxt";
+    } else {
+      els.cipherFile.click();
+    }
+  });
+
+  window.setAndroidTextContent = function(text) {
+    try {
+      els.messageInput.value=(text||"").trim();
+      setMode("decrypt");
+      updateReadiness();
+      setTemporaryState(STR[lang].loaded,STR[lang].loadedMsg,"good");
+      els.messageInput.focus();
+      return true;
+    } catch(error) {
+      console.warn("Could not load Android TXT content",error);
+      setTemporaryState(STR[lang].error,STR[lang].errorMsg,"bad");
+      return false;
+    }
+  };
+
+  els.cipherFile.addEventListener("change",async()=>{
+    const file=els.cipherFile.files?.[0];
+    if(!file)return;
+    try {
+      els.messageInput.value=(await file.text()).trim();
+      setMode("decrypt");
+      updateReadiness();
+      setTemporaryState(STR[lang].loaded,STR[lang].loadedMsg,"good");
+      els.messageInput.focus();
+    } catch(error) {
+      console.error(error);
+      setTemporaryState(STR[lang].error,STR[lang].errorMsg,"bad");
+    } finally {
+      els.cipherFile.value="";
+    }
+  });
+
+  function timestamp(){
+    const d=new Date(),pad=n=>String(n).padStart(2,"0");
+    return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+  }
+
+  window.androidTextSaved = function(){
+    setTemporaryState(STR[lang].saved,STR[lang].savedMsg,"good");
+  };
+
+  els.saveButton.addEventListener("click",()=>{
+    const value=els.resultOutput.value;
+    if(!value)return;
+    const prefix=mode==="encrypt"?"ephemeral-cypher":"ephemeral-cypher-opened";
+    const filename=`${prefix}-${timestamp()}.txt`;
+    const isAndroidApp = location.host === "app.local" && /Android/i.test(navigator.userAgent || "");
+    if(isAndroidApp){
+      location.href="ephemeral://savetxt?name="+encodeURIComponent(filename);
+      return;
+    }
+    const blob=new Blob([value+"\n"],{type:"text/plain;charset=utf-8"});
+    const href=URL.createObjectURL(blob);
+    const a=document.createElement("a");
+    a.href=href;a.download=filename;
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(href),3000);
+    setTemporaryState(STR[lang].saved,STR[lang].savedMsg,"good");
+  });
+  els.clearAll.addEventListener("click",()=>{
+    companionPageHash=null;sessionStorage.removeItem(COMPANION_SESSION_KEY);els.htmlFile.value="";els.htmlName.textContent="";
+    els.imgFile.value="";els.imgName.textContent="";els.messageInput.value="";els.resultOutput.value="";updateReadiness();
+  });
+  els.swapButton.addEventListener("click",()=>{
+    if(!els.resultOutput.value)return;els.messageInput.value=els.resultOutput.value;els.resultOutput.value="";
+    if(mode==="encrypt")setMode("decrypt");updateReadiness();els.messageInput.focus();
+  });
+  els.copyButton.addEventListener("click",async()=>{
+    if(!els.resultOutput.value)return;const t=STR[lang];
+    try{await navigator.clipboard.writeText(els.resultOutput.value);}catch{els.resultOutput.focus();els.resultOutput.select();document.execCommand("copy");}
+    setTemporaryState(t.copied,t.copiedMsg,"good");
+  });
+
+  els.versionLabel.textContent="v"+VERSION;
+  loadCompanionMaterial();
+  setLang(lang);
+
+  if("serviceWorker" in navigator) {
+    window.addEventListener("load",async()=>{
+      try {
+        const reg=await navigator.serviceWorker.register("./sw.js?v=210",{updateViaCache:"none"});
+        reg.update?.();let reloaded=false;
+        navigator.serviceWorker.addEventListener("controllerchange",()=>{if(reloaded)return;reloaded=true;location.reload();});
+      } catch(error){console.warn("Service worker registration failed",error);}
+    });
+  }
+})();
+</script>
+</body>
+</html>
