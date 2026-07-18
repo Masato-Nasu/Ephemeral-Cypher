@@ -1,94 +1,45 @@
-# Ephemeral Cypher / エフェメラルサイファー
+# Ephemeral Cypher Android v0.1.6
 
-Webページ、保存HTML、画像の「その時点の姿」から鍵を導出し、メッセージを暗号化するクライアントサイド・ツールです。
+Android edition of Ephemeral Cypher with an on-device in-app browser for capturing web pages as cryptographic key material.
 
-鍵文字列を直接共有する代わりに、同じ素材を再現できる人だけが封書を開けます。ページや画像が変われば鍵も変わり、暗号文は開かなくなります。
+## Main flow
 
-**Live:** https://masato-nasu.github.io/Ephemeral-Cypher/
+1. Open Ephemeral Cypher.
+2. Enter an HTTPS URL and tap **ページを鍵にする**.
+3. The page opens visibly in the in-app browser.
+4. Log in there if the site requires authentication.
+5. After confirming the page is fully displayed, tap **このページを鍵にする** in the browser toolbar.
+6. The app reads the currently displayed DOM text locally, applies the Ephemeral Cypher normalization rule, computes SHA-256 on-device, and returns to the encryption UI.
+7. Encrypt or decrypt with the resulting page fingerprint.
 
+The Android Share menu remains available as a shortcut: sharing an HTTPS page to Ephemeral Cypher opens that page in the same in-app browser, where the user explicitly chooses when to capture it.
 
-## v2.1.0 — Companion方式
+## Security model
 
-Webアプリから任意サイトを直接 `fetch()` するURL鍵方式を廃止し、Chrome拡張 **Ephemeral Cypher Companion** を追加しました。
+- HTTPS pages only.
+- Cleartext HTTP is disabled in the Android manifest.
+- No third-party relay server.
+- No `addJavascriptInterface()` bridge is exposed to browsed web pages.
+- The packaged app UI communicates with native Android only through a private custom navigation command intercepted by the app.
+- WebView local file/content access is disabled.
+- File-URL and universal file-URL access are disabled.
+- Mixed content is blocked.
+- Safe Browsing is enabled.
+- JavaScript pop-up windows and multiple windows are disabled.
+- Third-party cookies are disabled; first-party cookies are allowed so ordinary site login can work.
+- Page text and the generated fingerprint are not sent to the developer or a relay service.
+- The target website necessarily receives the normal direct page request from the device.
 
-鍵にしたいWebページを開いた状態でCompanionを押すと、そのページ内で次の処理を行います。
+## PC compatibility
 
-1. 現在ページのDOMを取得
-2. `script` / `style` / `noscript` を除外
-3. タイトルとテキストを正規化
-4. 最大200,000文字をSHA-256化
-5. **32バイトのページ指紋だけ**をEphemeral Cypherへ渡す
+The visible-text normalization and SHA-256 page-fingerprint procedure is kept aligned with Ephemeral Cypher Companion. Stable pages should therefore be cross-compatible between PC and Android.
 
-ページURLや本文を第三者中継へ送信する必要はありません。またWebアプリ側から他サイトへアクセスしないため、CORSによる `UNREACHABLE` もありません。
+Dynamic, personalized, A/B-tested, geolocated, or time-varying pages can still produce different fingerprints across devices or sessions.
 
-Companionは Manifest V3 の `activeTab` + `scripting` のみを使用し、`<all_urls>` の常時アクセス権は要求しません。ユーザーが拡張を開いた現在タブだけを一時的に読み取ります。
+## Build
 
-## Companionのインストール
+Open this folder in Android Studio, sync Gradle, then run on Android 8.0+.
 
-1. このリポジトリ内の `companion-extension` フォルダを確認します。
-2. Chromeで `chrome://extensions/` を開きます。
-3. 右上の「デベロッパー モード」をONにします。
-4. 「パッケージ化されていない拡張機能を読み込む」を押します。
-5. `companion-extension` フォルダを選択します。
-6. Ephemeral Cypher Companionをツールバーへ固定します。
+Release APK: **Build > Generate Signed App Bundle or APK > APK**.
 
-## Webページを鍵にする
-
-1. 鍵にしたいWebページを開きます。
-2. Ephemeral Cypher Companionを開きます。
-3. **このページを鍵にする**を押します。
-4. Ephemeral Cypherが開き、`WEB PAGE CAPTURED` と表示されたら準備完了です。
-5. メッセージを暗号化、または保存済み暗号文を復号します。
-
-CompanionからPWAへ渡すページ指紋はURLフラグメント `#ecpage=...` に入ります。フラグメントは通常のHTTPリクエストには含まれません。PWAは読み取り後すぐアドレスバーから除去し、同じタブの `sessionStorage` にだけ保持します。「クリア」を押すと削除します。
-
-## その他の鍵素材
-
-### 保存HTML
-
-WebページをHTMLとして保存し、ローカルファイルから鍵素材を作れます。Companionが使えない環境や、特定時点のページを固定して残したい場合に使えます。
-
-### 画像
-
-32×32ピクセルへ縮小し、DCTによる64bitの知覚ハッシュを生成します。見た目の近い画像を同じ素材として扱いやすい反面、ファイル全体の暗号学的ハッシュではなく、衝突や推測への耐性は限定的です。
-
-## 暗号文の保存と読込
-
-- 暗号化結果は **TXTで保存** から `.txt` ファイルとして保存できます。
-- 復号時は **TXTを読み込む** から保存ファイルを選ぶと、自動的にDECRYPTモードへ切り替わります。
-- コピー＆ペーストも利用できます。
-
-## 暗号形式
-
-### EC2（新規暗号化）
-
-- HKDF-SHA-256
-- AES-256-GCM
-- 16-byte salt
-- 12-byte IV
-- 素材種別のタグ分離
-- `EC2:` 接頭辞
-
-### EC1 / 無印（旧形式の復号）
-
-旧版と同じ `EC|1.1.2|` の導出経路を残しています。新しく暗号化するときはEC2だけを出力します。
-
-旧URL鍵の暗号文について、静的なページではCompanionの正規化結果が一致すれば復号できます。JavaScriptで内容が変化するページなどで一致しない場合は、当時保存したHTMLを使用してください。
-
-## セキュリティ上の注意
-
-この作品は「公開素材の一時性を鍵にする」という発想の実装です。暗号処理自体にはブラウザ標準のWeb Crypto APIを使用しますが、**素材を特定できる第三者は同じ鍵を再導出できる可能性があります**。安全性は、指し示した素材や組み合わせが第三者に推測されにくいことに依存します。
-
-Companion方式では、ページURLと本文をEphemeral Cypherのサーバーへ送りません。ただし、ページ指紋そのものはローカルブラウザ内でEphemeral Cypherへ渡されるため、端末やブラウザプロファイル自体が侵害されている状況までは保護できません。
-
-独立した第三者監査を受けた暗号製品ではありません。重要な個人情報、業務秘密、法令上の保護が必要なデータには、監査済みの暗号化ツールを使用してください。
-
-## PWA
-
-ビルド不要の静的サイトです。`index.html`、`manifest.json`、`sw.js`、アイコンをそのままGitHub PagesやCloudflare Pagesへ配置できます。
-
-Service Worker v2.1.0は、新しいキャッシュ名を使用して旧UIの残留を防ぎます。
-
-## License
-
-MIT
+Package: `com.masatonasu.ephemeralcypher`
